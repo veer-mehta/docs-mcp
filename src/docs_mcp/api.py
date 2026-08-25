@@ -20,6 +20,8 @@ from docs_mcp.mcp_client import (
 )
 from docs_mcp.pipeline import ingest_documentation
 from docs_mcp.storage.db import Database
+from docs_mcp.llm import generate_llm_response
+from docs_mcp.chat import handle_chat
 
 logger = logging.getLogger(__name__)
 
@@ -219,18 +221,81 @@ async def mcp_job_status(request):
     return JSONResponse(data)
 
 
+async def llm_chat(request):
+    """LLM-powered chat using MCP-retrieved documentation."""
+    query = request.query_params.get("q")
+    if not query:
+        return JSONResponse({"error": "Missing 'q' parameter"}, status_code=400)
+    try:
+        action = await handle_chat(db, query)
+
+        if action["mode"] == "ingest_started":
+            return JSONResponse({
+                "answer": action["answer"],
+                "sources": [],
+                "job_id": action.get("job_id"),
+            })
+
+        if action["mode"] == "ingest_ask_url":
+            return JSONResponse({
+                "answer": action["answer"],
+                "sources": [],
+            })
+
+        raw_response = await bridge.call(
+            "search_documentation", {"query": query, "k": 5, "mode": "hybrid"}
+        )
+        hits = parse_search_markdown(raw_response)
+        if not hits:
+            return JSONResponse({"answer": "No matching documentation found.", "sources": []})
+        context_lines = []
+        for hit in hits:
+            header = hit.get("title") or hit.get("url", "Unnamed")
+            if hit.get("heading_path"):
+                header += " — " + " > ".join(hit["heading_path"])
+            context_lines.append(f"**{header}**\n\n{hit.get('content', '')}")
+        context = "\n\n".join(context_lines)
+        prompt = (
+            "Answer the following question using only the provided context. "
+            "Keep it concise and conversational.\n\n"
+            f"Question: {query}\n\nContext:\n{context}"
+        )
+        answer = await generate_llm_response(prompt)
+        sources: list[dict] = []
+        seen_urls: set[str] = set()
+        for hit in hits:
+            url = hit.get("url", "")
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            sources.append(
+                {
+                    "title": hit.get("title") or url,
+                    "url": url,
+                    "heading_path": hit.get("heading_path", []),
+                    "content": hit.get("content", ""),
+                }
+            )
+        return JSONResponse({"answer": answer, "sources": sources})
+    except Exception as exc:
+        logger.exception("Error in llm_chat endpoint")
+        return JSONResponse({"error": f"Processing failed: {exc}"}, status_code=500)
+
+
+
 routes = [
     Route("/", index, methods=["GET"]),
-    Route("/ingest", ingest, methods=["POST"]),
     Route("/search", search, methods=["GET"]),
     Route("/sources", sources, methods=["GET"]),
     Route("/sources/{source_id}", delete_source, methods=["DELETE"]),
+    Route("/ingest", ingest, methods=["POST"]),
     Route("/jobs", list_jobs, methods=["GET"]),
     Route("/jobs/{job_id}", get_job, methods=["GET"]),
     Route("/mcp/search", mcp_search, methods=["GET"]),
     Route("/mcp/sources", mcp_sources, methods=["GET"]),
     Route("/mcp/ingest", mcp_ingest, methods=["POST"]),
     Route("/mcp/jobs/{job_id}", mcp_job_status, methods=["GET"]),
+    Route("/llm-chat", llm_chat, methods=["GET"]),
 ]
 
 app = Starlette(routes=routes, lifespan=lifespan)

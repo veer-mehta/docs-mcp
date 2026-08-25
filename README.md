@@ -70,13 +70,23 @@ Re-ingesting an existing `{name}@{version}` source only re-chunks/re-embeds
 pages whose extracted markdown changed (sha256); skipped pages are reported as
 `pages_unchanged`. Existing rows get backfilled on first re-run.
 
-## Embedding providers
+## Embeddings & LLM
 
-Set `EMBEDDING_PROVIDER` in `.env`: `openai` (needs key), `local` (offline
-sentence-transformer). Config knobs: `LOCAL_EMBEDDING_MODEL`,
-`LOCAL_EMBEDDING_MAX_TOKENS` (default 1024), `LOCAL_EMBEDDING_DEVICE`
-(`auto`/`cuda`/`cpu`). Switching providers with a different vector dimension
-requires dropping and re-creating the `documents` table.
+Embeddings are local (HuggingFace sentence-transformers): `EMBEDDING_PROVIDER=local`
+with knobs `LOCAL_EMBEDDING_MODEL`, `LOCAL_EMBEDDING_MAX_TOKENS` (default 1024),
+`LOCAL_EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`). `hash` is a fake provider for
+tests/dev. Switching to a model with a different vector dimension requires
+dropping and re-creating the `documents` table.
+
+LLM chat answers work with **any OpenAI-compatible provider** via three `.env`
+vars: `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Examples:
+
+| provider | LLM_BASE_URL | LLM_MODEL example |
+|---|---|---|
+| Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-3.6-flash` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `google/gemma-4-31b-it:free` |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| Anthropic | `https://api.anthropic.com/v1` | `claude-sonnet-4-5` |
 
 ## Tests
 

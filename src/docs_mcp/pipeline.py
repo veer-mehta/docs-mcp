@@ -64,6 +64,8 @@ async def ingest_documentation(
             str(max_depth if max_depth is not None else settings.crawl_max_depth),
             "--max-pages",
             str(max_pages if max_pages is not None else settings.crawl_max_pages),
+            "--cache-dir",
+            settings.crawl_cache_dir,
             stdout=asyncio.subprocess.PIPE,
             stderr=stderr_file,
             limit=64 * 1024 * 1024,

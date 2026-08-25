@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_CACHE_DIR = PROJECT_ROOT / ".crawl-cache"
 
 
 class Settings(BaseSettings):
@@ -13,15 +14,18 @@ class Settings(BaseSettings):
     )
 
     database_url: str = "postgresql://docs_mcp:docs_mcp@localhost:5432/docs_mcp"
-    embedding_provider: str = "openai"
-    openai_api_key: str | None = None
-    openai_embedding_model: str = "text-embedding-3-small"
+    embedding_provider: str = "local"  # local | hash
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     local_embedding_max_tokens: int = 1024
     local_embedding_device: str = "auto"
+    llm_api_key: str | None = None
+    llm_base_url: str = "https://openrouter.ai/api/v1"  # any OpenAI-compatible host
+    llm_model: str = ""
+    llm_max_tokens: int = 2048
     crawl_max_depth: int = 2
     crawl_max_pages: int = 30
     crawl_delay: float = 0.5
+    crawl_cache_dir: str = str(DEFAULT_CACHE_DIR)
     user_agent: str = "docs-mcp-bot/0.1 (documentation indexer)"
     mcp_transport: str = "stdio"
     api_host: str = "127.0.0.1"

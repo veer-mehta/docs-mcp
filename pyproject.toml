@@ -15,7 +15,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "asyncpg>=0.30.0",
     "pydantic-settings>=2.6.0",
-    "openai>=1.60.0",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]

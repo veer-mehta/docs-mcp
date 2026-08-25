@@ -15,9 +15,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-pages", type=int, default=settings.crawl_max_pages)
     parser.add_argument("--delay", type=float, default=settings.crawl_delay)
     parser.add_argument("--user-agent", default=settings.user_agent)
+    parser.add_argument("--cache-dir", default=settings.crawl_cache_dir)
+    parser.add_argument("--no-cache", action="store_true")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
+
+    cache_dir = None if args.no_cache else args.cache_dir
+
     process = CrawlerProcess(
         settings={
             "ITEM_PIPELINES": {"docs_mcp.scraper.pipelines.JsonlStdoutPipeline": 100},
@@ -32,6 +37,7 @@ def main(argv: list[str] | None = None) -> int:
         base_url=args.url,
         max_depth=args.depth,
         max_pages=args.max_pages,
+        cache_dir=cache_dir,
     )
     process.start()
     return 0

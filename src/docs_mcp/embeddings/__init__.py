@@ -4,10 +4,6 @@ from docs_mcp.embeddings.base import EmbeddingProvider
 
 def get_embedding_provider() -> EmbeddingProvider:
     provider = settings.embedding_provider.lower()
-    if provider == "openai":
-        from docs_mcp.embeddings.openai_provider import OpenAIEmbeddingProvider
-
-        return OpenAIEmbeddingProvider()
     if provider == "local":
         from docs_mcp.embeddings.local_provider import LocalEmbeddingProvider
 

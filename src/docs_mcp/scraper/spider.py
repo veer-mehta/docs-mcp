@@ -1,15 +1,25 @@
+import hashlib
+import json
+import logging
+import os
 import re
-from typing import Any, Iterable
+import time as _time
+from pathlib import Path
+from typing import Any
 from urllib.parse import urldefrag, urlparse, urlunparse
 
 import scrapy
-from scrapy.http import Response
+from scrapy.http import HtmlResponse, Response
 from scrapy_playwright.page import PageMethod
+
+logger = logging.getLogger(__name__)
 
 NON_PAGE_EXTENSIONS = re.compile(
     r"\.(png|jpe?g|gif|svg|ico|css|js|mjs|map|pdf|zip|gz|tar|rar|7z|mp4|webm|mp3|wav|woff2?|ttf|eot|xml|json|txt|rss|atom)$",
     re.IGNORECASE,
 )
+
+CACHE_EXPIRY = 60 * 60 * 24 * 7  # 7 days
 
 
 def normalize_url(url: str) -> str:
@@ -19,6 +29,10 @@ def normalize_url(url: str) -> str:
     if path != "/":
         path = path.rstrip("/")
     return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
+
+
+def _url_key(url: str) -> str:
+    return hashlib.sha256(url.encode()).hexdigest()[:16]
 
 
 class DocsSpider(scrapy.Spider):
@@ -45,6 +59,7 @@ class DocsSpider(scrapy.Spider):
         base_url: str,
         max_depth: int = 2,
         max_pages: int = 30,
+        cache_dir: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -57,9 +72,65 @@ class DocsSpider(scrapy.Spider):
         self.seen: set[str] = set()
         self.emitted: set[str] = set()
         self._root_landed = False
+        self._cache_dir: Path | None = None
+        if cache_dir:
+            self._cache_dir = Path(cache_dir)
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._cache_hits = 0
+        self._cache_misses = 0
 
-    async def start(self) -> AsyncIterator[Any]:
-        yield self._request(self.base_url)
+    def _cache_get(self, url: str) -> dict | None:
+        if not self._cache_dir:
+            return None
+        url = normalize_url(url)
+        meta_path = self._cache_dir / f"{_url_key(url)}.meta.json"
+        html_path = self._cache_dir / f"{_url_key(url)}.html"
+        if not meta_path.exists() or not html_path.exists():
+            return None
+        try:
+            meta = json.loads(meta_path.read_text())
+            if (meta.get("ts", 0)) < (_time.time() - CACHE_EXPIRY):
+                return None
+            return {
+                "title": meta.get("title"),
+                "html": html_path.read_text(),
+                "final_url": meta.get("final_url", url),
+            }
+        except Exception:
+            return None
+
+    def _cache_put(self, url: str, title: str | None, html: str, final_url: str | None = None) -> None:
+        if not self._cache_dir:
+            return
+
+        key = _url_key(url)
+        meta_path = self._cache_dir / f"{key}.meta.json"
+        html_path = self._cache_dir / f"{key}.html"
+        try:
+            meta = {"url": url, "title": title, "ts": _time.time()}
+            if final_url:
+                meta["final_url"] = final_url
+            meta_path.write_text(json.dumps(meta))
+            html_path.write_text(html)
+        except OSError as e:
+            self.logger.warning("cache write failed for %s: %s", url, e)
+
+    async def start(self):
+        cached = self._cache_get(self.base_url)
+        if cached is not None:
+            self._cache_hits += 1
+            response = HtmlResponse(
+                url=cached["final_url"],
+                body=cached["html"].encode("utf-8"),
+                encoding="utf-8",
+                request=scrapy.Request(self.base_url),
+            )
+            response.meta["depth"] = 0
+            for item in self.parse_page(response):
+                yield item
+        else:
+            self._cache_misses += 1
+            yield self._request(self.base_url)
 
     def _request(self, url: str) -> scrapy.Request:
         return scrapy.Request(
@@ -75,7 +146,7 @@ class DocsSpider(scrapy.Spider):
             },
         )
 
-    def parse_page(self, response: Response) -> Iterable[Any]:
+    def parse_page(self, response: Response) -> Any:
         url = normalize_url(response.url)
         parsed = urlparse(url)
         if not self._root_landed:
@@ -88,10 +159,16 @@ class DocsSpider(scrapy.Spider):
         if url not in self.emitted:
             self.emitted.add(url)
             title = response.css("title::text").get()
+            title_clean = (title or "").strip() or None
+            html = response.text
+            self._cache_put(url, title_clean, html, final_url=url)
+            req_url = normalize_url(response.request.url)
+            if req_url != url:
+                self._cache_put(req_url, title_clean, html, final_url=url)
             yield {
                 "url": url,
-                "title": (title or "").strip() or None,
-                "html": response.text,
+                "title": title_clean,
+                "html": html,
             }
 
         if response.meta.get("depth", 0) >= self.max_depth:
@@ -103,7 +180,23 @@ class DocsSpider(scrapy.Spider):
             if candidate in self.seen or not self._should_follow(candidate):
                 continue
             self.seen.add(candidate)
-            yield self._request(candidate)
+            cached = self._cache_get(candidate)
+            if cached is not None:
+                self._cache_hits += 1
+                cached_response = HtmlResponse(
+                    url=cached["final_url"],
+                    body=cached["html"].encode("utf-8"),
+                    encoding="utf-8",
+                    request=scrapy.Request(candidate),
+                )
+                cached_response.meta["depth"] = response.meta.get("depth", 0) + 1
+                for item in self.parse_page(cached_response):
+                    yield item
+            else:
+                self._cache_misses += 1
+                req = self._request(candidate)
+                req.meta["depth"] = response.meta.get("depth", 0) + 1
+                yield req
 
     def _should_follow(self, url: str) -> bool:
         parsed = urlparse(url)

@@ -4,158 +4,255 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>docs-rag</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --border: #262b36;
-    --text: #e6e9ef;
-    --muted: #8b93a5;
-    --accent: #6ea8fe;
-    --good: #4ade80;
-    --bad: #f87171;
+    --bg: #000; --surface: #111; --surface2: #191919;
+    --border: #222; --border2: #333;
+    --text: #ececec; --muted: #888; --dim: #555;
+    --green: #4ade80; --red: #f87171;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    font: 14px/1.6 -apple-system, "Inter", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .3px; }
-  h1 span { color: var(--accent); }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 16px; margin-bottom: 16px;
+  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 100px; }
+
+  header { margin-bottom: 36px; }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -.3px; }
+  header p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+  .tabs { display: flex; gap: 2px; margin-bottom: 32px; }
+  .tabs button {
+    background: none; border: none; color: var(--dim); cursor: pointer;
+    padding: 8px 16px; font-size: 13px; font-weight: 500; border-radius: 6px;
+    transition: all .12s;
   }
-  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
-  input {
-    width: 100%; padding: 9px 11px; border-radius: 7px; color: var(--text);
-    background: #0d0f14; border: 1px solid var(--border); font-size: 14px;
+  .tabs button:hover { color: var(--muted); background: var(--surface); }
+  .tabs button.on { color: var(--text); background: var(--surface); }
+  .view { display: none; }
+  .view.on { display: block; }
+
+  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 500; }
+  input, select {
+    width: 100%; padding: 9px 12px; border-radius: 8px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); font-size: 13.5px;
+    transition: border-color .12s;
   }
-  input:focus { outline: none; border-color: var(--accent); }
+  input::placeholder { color: var(--dim); }
+  input:focus, select:focus { outline: none; border-color: var(--text); }
+  select { cursor: pointer; }
+  input[type="checkbox"] { width: auto; accent-color: var(--text); }
+
   .row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .row > * { flex: 1; min-width: 120px; }
-  button {
-    background: var(--accent); color: #0b1220; border: 0; border-radius: 7px;
-    padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+  .row > * { flex: 1; min-width: 110px; }
+
+  .btn {
+    background: var(--text); color: var(--bg); border: 0; border-radius: 8px;
+    padding: 9px 20px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    transition: opacity .12s;
   }
-  button:hover { filter: brightness(1.1); }
-  button:disabled { opacity: .5; cursor: wait; }
-  button.ghost {
-    background: transparent; color: var(--muted); border: 1px solid var(--border);
-    padding: 4px 10px; font-size: 12px; font-weight: 500;
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .3; cursor: wait; }
+  .btn-ghost {
+    background: none; color: var(--muted); border: 1px solid var(--border);
+    padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer;
+    transition: all .12s;
   }
-  button.ghost:hover { color: var(--bad); border-color: var(--bad); filter: none; }
-  .filters { margin-top: 10px; }
-  select {
-    width: 100%; padding: 9px 11px; border-radius: 7px; color: var(--text);
-    background: #0d0f14; border: 1px solid var(--border); font-size: 14px;
+  .btn-ghost:hover { color: var(--red); border-color: var(--red); }
+
+  .divider { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
+  .section-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .8px; font-weight: 600; margin-bottom: 14px; }
+
+  #chatLog {
+    display: flex; flex-direction: column; gap: 6px;
+    min-height: 300px; max-height: 520px; overflow-y: auto;
+    padding: 4px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
   }
-  select:focus { outline: none; border-color: var(--accent); }
-  .hit { border-top: 1px solid var(--border); padding: 14px 2px; }
-  .hit:first-child { border-top: 0; }
-  .hit-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .msg {
+    max-width: 80%; padding: 10px 15px; border-radius: 14px; font-size: 13.5px;
+    animation: fadeUp .15s ease;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } }
+  .msg.user {
+    align-self: flex-end; background: var(--text); color: var(--bg);
+    border-bottom-right-radius: 4px; white-space: pre-wrap; font-weight: 500;
+  }
+  .msg.bot {
+    align-self: flex-start; background: var(--surface); border: 1px solid var(--border);
+    border-bottom-left-radius: 4px; line-height: 1.65;
+  }
+  .msg.bot.err { color: var(--red); border-color: rgba(248,113,113,.2); }
+  .msg.bot p { margin: 0 0 8px; }
+  .msg.bot p:last-child { margin-bottom: 0; }
+  .msg.bot ul, .msg.bot ol { margin: 4px 0 8px 20px; }
+  .msg.bot li { margin-bottom: 2px; }
+  .msg.bot strong { color: #fff; font-weight: 600; }
+  .msg.bot em { color: var(--muted); }
+  .msg.bot code { background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; font-family: 'SF Mono', 'Fira Code', monospace; }
+  .msg.bot pre { background: var(--bg); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  .msg.bot pre code { background: none; padding: 0; font-size: 12px; }
+  .msg.bot blockquote { border-left: 2px solid var(--border2); padding-left: 12px; margin: 8px 0; color: var(--muted); }
+  .msg.bot h1, .msg.bot h2, .msg.bot h3 { font-size: 14px; font-weight: 600; margin: 12px 0 6px; }
+  .msg.bot h1:first-child, .msg.bot h2:first-child, .msg.bot h3:first-child { margin-top: 0; }
+
+  .chat-input {
+    display: flex; gap: 8px; margin-top: 14px;
+    padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; transition: border-color .12s;
+  }
+  .chat-input:focus-within { border-color: var(--border2); }
+  .chat-input input { border: 0; background: none; padding: 0; flex: 1; font-size: 14px; }
+  .chat-input input:focus { outline: none; border: none; }
+  .chat-input .btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; }
+
+  .srcs { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .srcs strong { color: var(--dim); text-transform: uppercase; letter-spacing: .4px; font-size: 10.5px; }
+  .srcs a { color: var(--text); text-decoration: none; }
+  .srcs a:hover { text-decoration: underline; }
+
+  .status { font-size: 12px; margin-top: 8px; color: var(--dim); min-height: 16px; }
+  .status.ok { color: var(--green); }
+  .status.err { color: var(--red); }
+
+  .hit { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .hit:last-child { border-bottom: 0; }
+  .hit-head { display: flex; align-items: center; gap: 10px; }
   .score {
-    background: rgba(110,168,254,.12); color: var(--accent);
-    font-size: 12px; padding: 2px 8px; border-radius: 99px; font-weight: 600;
+    background: var(--surface2); color: var(--muted);
+    font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 600;
+    font-variant-numeric: tabular-nums; border: 1px solid var(--border);
   }
-  .crumb { color: var(--muted); font-size: 12px; }
-  a { color: var(--accent); text-decoration: none; }
+  a { color: var(--text); text-decoration: none; }
   a:hover { text-decoration: underline; }
+  .crumb { color: var(--dim); font-size: 11.5px; margin-top: 3px; }
   .content {
-    margin-top: 8px; white-space: pre-wrap; color: #c6ccd8;
-    font-size: 13.5px; max-height: 260px; overflow-y: auto;
-    border-left: 2px solid var(--border); padding-left: 12px;
+    margin-top: 8px; white-space: pre-wrap; color: var(--muted);
+    font-size: 13px; max-height: 180px; overflow-y: auto;
+    padding-left: 12px; border-left: 1px solid var(--border);
+    line-height: 1.55;
   }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th { color: var(--muted); text-align: left; font-weight: 500; padding: 6px 8px; }
-  td { padding: 8px; border-top: 1px solid var(--border); }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .status { font-size: 13px; margin-top: 10px; color: var(--muted); min-height: 18px; }
-  .status.ok { color: var(--good); }
-  .status.err { color: var(--bad); }
-  .empty { color: var(--muted); text-align: center; padding: 22px 0; font-size: 14px; }
-  details summary { cursor: pointer; color: var(--muted); font-size: 13px; user-select: none; }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th {
+    color: var(--dim); text-align: left; font-weight: 500; padding: 0 8px 10px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tbl td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+  .empty { color: var(--dim); text-align: center; padding: 28px 0; font-size: 13px; }
+
+  details summary {
+    cursor: pointer; color: var(--muted); font-size: 12.5px; user-select: none;
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  details summary::before { content: '+'; font-weight: 600; color: var(--dim); transition: transform .15s; }
+  details[open] summary::before { transform: rotate(45deg); }
+  details summary::-webkit-details-marker { display: none; }
+
+  .hint { font-size: 11.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
+  .hint code { color: var(--muted); background: var(--surface); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+  @media (max-width: 600px) {
+    .wrap { padding: 24px 14px 80px; }
+    .msg { max-width: 90%; }
+    .row { flex-direction: column; }
+    .row > * { min-width: 100%; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>docs<span>-rag</span></h1>
-  <div class="sub">semantic search over crawled framework documentation</div>
+  <header>
+    <h1>docs-rag</h1>
+    <p>semantic search over crawled documentation · answers from your LLM</p>
+  </header>
 
-  <div style="margin:12px 0 0; display:flex; align-items:center; gap:10px; font-size:13px">
-    <span style="color:var(--muted)">backend</span>
-    <select id="backend" style="flex:0; min-width:280px">
-      <option value="rag">RAG — direct pipeline access</option>
-      <option value="mcp">MCP — tool calls through docs-mcp server</option>
-    </select>
+  <div class="tabs">
+    <button id="tabChat" class="on" type="button">chat</button>
+    <button id="tabRag" type="button">search &amp; sources</button>
   </div>
 
-  <div class="card">
+  <!-- ============ chat ============ -->
+  <section id="viewChat" class="view on">
+    <div id="chatLog"></div>
+    <div class="chat-input">
+      <input id="chatQ" placeholder="ask anything…" autofocus>
+      <button id="chatSend" class="btn">send</button>
+    </div>
+    <div class="status">retrieval via MCP · answers by the LLM in <code>.env</code></div>
+  </section>
+
+  <!-- ============ RAG ============ -->
+  <section id="viewRag" class="view">
     <form id="searchForm">
-      <label for="q">Search documentation</label>
+      <div class="section-label">search</div>
       <div class="row">
-        <input id="q" placeholder="e.g. how do I define a model with validated fields" autofocus>
-        <button style="flex:0">Search</button>
+        <input id="q" placeholder="e.g. how do I define a model with validated fields">
+        <button class="btn">search</button>
       </div>
-      <details class="filters">
-        <summary>filters &amp; options</summary>
-        <div class="row" style="margin-top:10px">
-          <div><label>framework name</label><input id="fname" placeholder="pydantic"></div>
+      <details style="margin-top:10px">
+        <summary>advanced</summary>
+        <div class="row" style="margin-top:12px">
+          <div><label>source</label><input id="fname" placeholder="pydantic"></div>
           <div><label>version</label><input id="fver" placeholder="2.13"></div>
-          <div><label>results (k)</label><input id="fk" type="number" value="5" min="1" max="20"></div>
+          <div><label>limit</label><input id="fk" type="number" value="5" min="1" max="20"></div>
           <div>
             <label>mode</label>
             <select id="fmode">
-              <option value="hybrid">hybrid (vector + keyword)</option>
-              <option value="vector">vector only</option>
-              <option value="keyword">keyword only</option>
+              <option value="hybrid">hybrid</option>
+              <option value="vector">vector</option>
+              <option value="keyword">keyword</option>
             </select>
           </div>
         </div>
       </details>
+      <div id="searchStatus" class="status"></div>
     </form>
-    <div id="searchStatus" class="status"></div>
-    <div id="hits"></div>
-  </div>
 
-  <div class="card">
-    <table>
-      <thead><tr><th>indexed sources</th><th class="num">pages</th><th class="num">chunks</th><th>updated</th><th></th></tr></thead>
+    <div id="hits" style="margin-top: 6px;"></div>
+
+    <hr class="divider">
+
+    <div class="section-label">indexed sources</div>
+    <table class="tbl">
+      <thead><tr><th>source</th><th class="num">pages</th><th class="num">chunks</th><th>updated</th><th></th></tr></thead>
       <tbody id="sourceRows"><tr><td colspan="5" class="empty">loading…</td></tr></tbody>
     </table>
-  </div>
 
-  <div class="card">
+    <hr class="divider">
+
     <details>
-      <summary>+ add documentation source</summary>
-      <form id="ingestForm" style="margin-top:12px">
+      <summary>add documentation</summary>
+      <form id="ingestForm" style="margin-top:14px">
         <div class="row">
           <div><label>name *</label><input id="iname" placeholder="pydantic" required></div>
           <div><label>version *</label><input id="iver" placeholder="2.13" required></div>
         </div>
         <div class="row" style="margin-top:10px">
-          <div style="flex:3"><label>documentation url *</label><input id="iurl" placeholder="https://docs.pydantic.dev/latest/" required></div>
-          <div><label>max depth</label><input id="idepth" type="number" value="2" min="0" max="5"></div>
+          <div style="flex:3"><label>url *</label><input id="iurl" placeholder="https://docs.pydantic.dev/latest/" required></div>
+          <div><label>depth</label><input id="idepth" type="number" value="2" min="0" max="5"></div>
           <div><label>max pages</label><input id="ipages" type="number" value="30" min="1" max="300"></div>
         </div>
-        <div style="margin-top:12px; display:flex; align-items:center; gap:14px">
-          <button>Ingest</button>
-          <label style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:13px">
-            <input type="checkbox" id="iprune"> remove pages missing from re-crawl
+        <div style="margin-top:14px; display:flex; align-items:center; gap:14px">
+          <button class="btn">ingest</button>
+          <label style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; cursor:pointer">
+            <input type="checkbox" id="iprune"> prune removed pages
           </label>
         </div>
       </form>
       <div id="ingestStatus" class="status"></div>
     </details>
-  </div>
+  </section>
 </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const api = () => ($("backend").value === "mcp" ? "/mcp" : "");
-const via = () => `via ${$("backend").value.toUpperCase()}`;
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => (
@@ -163,6 +260,131 @@ function esc(s) {
   ));
 }
 
+/* ---------- view switching ---------- */
+function showView(tab) {
+  const chat = tab === "chat";
+  $("tabChat").classList.toggle("on", chat);
+  $("tabRag").classList.toggle("on", !chat);
+  $("viewChat").classList.toggle("on", chat);
+  $("viewRag").classList.toggle("on", !chat);
+}
+$("tabChat").addEventListener("click", () => showView("chat"));
+$("tabRag").addEventListener("click", () => showView("rag"));
+
+/* ---------- chat persistence ---------- */
+const CHAT_KEY = "docs_rag_chat";
+const CHAT_MAX = 50;
+
+function saveChat() {
+  const msgs = [...$("chatLog").querySelectorAll(".msg")].map(el => ({
+    cls: el.className.replace("msg ", "").replace(" err", ""),
+    html: el.innerHTML,
+    err: el.classList.contains("err"),
+  }));
+  localStorage.setItem(CHAT_KEY, JSON.stringify(msgs.slice(-CHAT_MAX)));
+}
+
+function loadChat() {
+  try {
+    const msgs = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
+    msgs.forEach(m => {
+      const div = addMsg(m.cls, m.html);
+      if (m.err) div.classList.add("err");
+    });
+  } catch {}
+}
+
+function addMsg(cls, html) {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.innerHTML = html;
+  $("chatLog").appendChild(div);
+  $("chatLog").scrollTop = $("chatLog").scrollHeight;
+  saveChat();
+  return div;
+}
+
+/* ---------- send chat ---------- */
+async function sendChat() {
+  const q = $("chatQ").value.trim();
+  if (!q) return;
+  $("chatQ").value = "";
+  addMsg("user", esc(q));
+  const thinking = addMsg("bot", '<span style="color:var(--dim)">thinking…</span>');
+  $("chatSend").disabled = true;
+  try {
+    const res = await fetch("/llm-chat?q=" + encodeURIComponent(q));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
+    const srcs = (data.sources || []).map(s =>
+      `<a href="${esc(s.url)}" target="_blank">${esc(s.title || s.url)}</a>`
+    ).join(" · ");
+    const answerHtml =
+      marked.parse(data.answer) +
+      (srcs ? `<div class="srcs"><strong>sources</strong><br>${srcs}</div>` : "");
+    thinking.innerHTML = answerHtml;
+    thinking.dataset.answer = data.answer;
+
+    if (data.job_id) {
+      pollJobInChat(data.job_id, thinking);
+    }
+  } catch (err) {
+    thinking.classList.add("err");
+    thinking.textContent = "error: " + err.message;
+  } finally {
+    $("chatSend").disabled = false;
+    $("chatQ").focus();
+  }
+}
+
+async function pollJobInChat(jobId, msgEl) {
+  for (;;) {
+    await new Promise(r => setTimeout(r, 2000));
+    let job;
+    try {
+      const res = await fetch("/jobs/" + encodeURIComponent(jobId));
+      job = await res.json();
+    } catch { continue; }
+
+    if (job.status === "running" || job.status === "queued") {
+      const base = marked.parse(msgEl.dataset.answer || "");
+      msgEl.innerHTML = base +
+        `<div class="status" style="margin-top:10px">` +
+        `${job.status} — crawled ${job.pages_crawled}, ` +
+        `indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks` +
+        `</div>`;
+      $("chatLog").scrollTop = $("chatLog").scrollHeight;
+    } else if (job.status === "done") {
+      const r = job.result || {};
+      const extra = [];
+      if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged`);
+      if (r.pages_removed) extra.push(`${r.pages_removed} removed`);
+      const base = marked.parse(msgEl.dataset.answer || "");
+      msgEl.innerHTML = base +
+        `<div class="status ok" style="margin-top:10px">` +
+        `done — ${r.pages_indexed}/${r.pages_crawled} pages, ` +
+        `${r.chunks_indexed} chunks` +
+        (extra.length ? ` · ${extra.join(", ")}` : "") +
+        `</div>`;
+      $("chatLog").scrollTop = $("chatLog").scrollHeight;
+      loadSources();
+      return;
+    } else {
+      const base = marked.parse(msgEl.dataset.answer || "");
+      msgEl.innerHTML = base +
+        `<div class="status err" style="margin-top:10px">` +
+        `failed: ${job.error || "unknown"}</div>`;
+      $("chatLog").scrollTop = $("chatLog").scrollHeight;
+      return;
+    }
+  }
+}
+$("chatSend").addEventListener("click", sendChat);
+$("chatQ").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); sendChat(); }
+});
+
+/* ---------- RAG search ---------- */
 async function doSearch(ev) {
   ev.preventDefault();
   const q = $("q").value.trim();
@@ -172,17 +394,14 @@ async function doSearch(ev) {
   $("hits").innerHTML = "";
   try {
     const params = new URLSearchParams({
-      q,
-      k: $("fk").value || 5,
-      mode: $("fmode").value || "hybrid",
+      q, k: $("fk").value || 5, mode: $("fmode").value || "hybrid",
     });
     if ($("fname").value.trim()) params.set("name", $("fname").value.trim());
     if ($("fver").value.trim()) params.set("version", $("fver").value.trim());
-    const res = await fetch(api() + "/search?" + params);
+    const res = await fetch("/search?" + params);
     if (!res.ok) throw new Error((await res.json()).error || res.status);
     const data = await res.json();
-    $("searchStatus").textContent =
-      data.hits.length ? `${data.hits.length} result(s) · ${via()}` : `no matches · ${via()}`;
+    $("searchStatus").textContent = data.hits.length ? `${data.hits.length} result(s)` : "no matches";
     $("hits").innerHTML = data.hits.map(h => {
       const score = h.similarity != null ? h.similarity.toFixed(2) : (h.bm25_score ?? 0).toFixed(4);
       return `
@@ -201,30 +420,27 @@ async function doSearch(ev) {
   }
 }
 
+/* ---------- sources ---------- */
 async function loadSources() {
-  const tbody = $("sourceRows");
-  const mcpMode = $("backend").value === "mcp";
   try {
-    const res = await fetch(api() + "/sources");
+    const res = await fetch("/sources");
     const data = await res.json();
     if (!data.sources.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty">nothing indexed yet — add a source below</td></tr>`;
+      $("sourceRows").innerHTML = `<tr><td colspan="5" class="empty">nothing indexed yet</td></tr>`;
       return;
     }
-    tbody.innerHTML = data.sources.map(s => `
+    $("sourceRows").innerHTML = data.sources.map(s => `
       <tr>
-        <td>${esc(s.source_id)}</td>
+        <td style="font-weight:500">${esc(s.source_id)}</td>
         <td class="num">${s.pages}</td>
         <td class="num">${s.chunks}</td>
-        <td style="color:var(--muted)">${esc(String(s.updated_at || "").slice(0, 16).replace("T", " "))}</td>
+        <td style="color:var(--dim)">${esc(String(s.updated_at || "").slice(0, 16).replace("T", " "))}</td>
         <td style="text-align:right">
-          ${mcpMode
-            ? `<span style="color:var(--muted);font-size:12px" title="delete is only available via the RAG backend">—</span>`
-            : `<button class="ghost" onclick="deleteSource('${esc(s.source_id)}')">delete</button>`}
+          <button class="btn-ghost" onclick="deleteSource('${esc(s.source_id)}')">delete</button>
         </td>
       </tr>`).join("");
   } catch {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty">failed to load sources (${via()})</td></tr>`;
+    $("sourceRows").innerHTML = `<tr><td colspan="5" class="empty">failed to load</td></tr>`;
   }
 }
 
@@ -234,15 +450,16 @@ async function deleteSource(id) {
   loadSources();
 }
 
+/* ---------- ingest + job polling ---------- */
 async function doIngest(ev) {
   ev.preventDefault();
-  const btn = $("ingestForm").querySelector("button");
+  const btn = $("ingestForm").querySelector(".btn");
   const status = $("ingestStatus");
   btn.disabled = true;
   status.className = "status";
-  status.textContent = "submitting job…";
+  status.textContent = "submitting…";
   try {
-    const res = await fetch(api() + "/ingest", {
+    const res = await fetch("/ingest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -267,9 +484,9 @@ async function doIngest(ev) {
 
 async function pollJob(jobId, status, btn) {
   for (;;) {
-    let res, job;
+    let job;
     try {
-      res = await fetch("/jobs/" + encodeURIComponent(jobId));
+      const res = await fetch("/jobs/" + encodeURIComponent(jobId));
       job = await res.json();
     } catch (err) {
       status.className = "status err";
@@ -280,34 +497,38 @@ async function pollJob(jobId, status, btn) {
     if (job.status === "queued" || job.status === "running") {
       status.className = "status";
       status.textContent =
-        `job ${jobId} ${job.status} — crawled ${job.pages_crawled}, ` +
+        `${job.status} — crawled ${job.pages_crawled}, ` +
         `indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks`;
     } else if (job.status === "done") {
       status.className = "status ok";
       const r = job.result || {};
       const extra = [];
-      if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged skipped`);
+      if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged`);
       if (r.pages_removed) extra.push(`${r.pages_removed} removed`);
       status.textContent =
-        `indexed ${r.pages_indexed}/${r.pages_crawled} pages, ` +
-        `${r.chunks_indexed} chunks (${r.source_id})` +
+        `indexed ${r.pages_indexed}/${r.pages_crawled} pages · ` +
+        `${r.chunks_indexed} chunks` +
         (extra.length ? ` · ${extra.join(", ")}` : "");
       btn.disabled = false;
       loadSources();
       return;
     } else {
       status.className = "status err";
-      status.textContent = `job ${jobId} failed: ${job.error || "unknown"}`;
+      status.textContent = `failed: ${job.error || "unknown"}`;
       btn.disabled = false;
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise(r => setTimeout(r, 1500));
   }
 }
 
 $("searchForm").addEventListener("submit", doSearch);
 $("ingestForm").addEventListener("submit", doIngest);
-$("backend").addEventListener("change", loadSources);
+
+loadChat();
+if (!$("chatLog").querySelectorAll(".msg").length) {
+  addMsg("bot", "Hi! Ask anything about the indexed docs — try <em>\"how do I install pydantic?\"</em>");
+}
 loadSources();
 </script>
 </body>
