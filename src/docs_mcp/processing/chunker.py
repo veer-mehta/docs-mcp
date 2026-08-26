@@ -13,11 +13,6 @@ class Chunk:
     content: str
     heading_path: list[str]
 
-    @property
-    def breadcrumb(self) -> str:
-        return " > ".join(self.heading_path)
-
-
 @dataclass
 class _Section:
     heading_path: list[str]

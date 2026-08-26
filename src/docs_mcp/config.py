@@ -14,12 +14,12 @@ class Settings(BaseSettings):
     )
 
     database_url: str = "postgresql://docs_mcp:docs_mcp@localhost:5432/docs_mcp"
-    embedding_provider: str = "local"  # local | hash
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     local_embedding_max_tokens: int = 1024
     local_embedding_device: str = "auto"
+    local_embedding_min_free_vram_gib: float = 4.0
     llm_api_key: str | None = None
-    llm_base_url: str = "https://openrouter.ai/api/v1"  # any OpenAI-compatible host
+    llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = ""
     llm_max_tokens: int = 2048
     crawl_max_depth: int = 2

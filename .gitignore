@@ -11,4 +11,3 @@ dist/
 build/
 crawl_output/
 .crawl-cache/
-.slim/

@@ -39,7 +39,7 @@ class LocalEmbeddingProvider:
             free_bytes, _total = torch.cuda.mem_get_info()
         except Exception:
             return "cuda"
-        needed = 4 * 1024**3
+        needed = int(settings.local_embedding_min_free_vram_gib * 1024**3)
         if free_bytes >= needed:
             return "cuda"
         logger.warning(

@@ -1,4 +1,5 @@
 import logging
+import re
 
 import trafilatura
 from bs4 import BeautifulSoup
@@ -17,18 +18,8 @@ _JUNK_SELECTORS = [
 
 
 def _collapse_blank(text: str) -> str:
-    out: list[str] = []
-    blank = 0
-    for line in text.splitlines():
-        stripped = line.rstrip()
-        if stripped.strip():
-            blank = 0
-            out.append(stripped)
-        else:
-            blank += 1
-            if blank <= 1:
-                out.append("")
-    return "\n".join(out).strip()
+    text = re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 def _fallback_markdown(html: str) -> str:

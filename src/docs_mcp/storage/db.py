@@ -5,6 +5,16 @@ import asyncpg
 
 SCHEMA_SQL = "CREATE EXTENSION IF NOT EXISTS vector"
 
+
+def source_pattern(name: str | None, version: str | None) -> str | None:
+    if name and version:
+        return f"{name}@{version}"
+    if name:
+        return f"{name}@%"
+    if version:
+        return f"%@{version}"
+    return None
+
 TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS {table} (
     id BIGSERIAL PRIMARY KEY,
@@ -97,8 +107,7 @@ class Database:
             if actual != expected:
                 raise RuntimeError(
                     f"{table}.embedding column is {actual}, expected {expected}; "
-                    "switch EMBEDDING_PROVIDER back or DROP TABLE "
-                    f"{table} and re-ingest"
+                    f"DROP TABLE {table} and re-ingest"
                 )
 
     async def upsert_chunks(self, rows: list[dict]) -> None:
@@ -124,7 +133,6 @@ class Database:
             await conn.executemany(UPSERT_SQL.replace("{table}", self._table), params)
 
     async def get_source_hashes(self, source_id: str) -> dict[str, str | None]:
-        """Map each crawled URL of a source to its latest content hash."""
         pool = await self.pool()
         rows = await pool.fetch(
             f"SELECT DISTINCT ON (url) url, content_hash FROM {self._table} "
@@ -134,7 +142,6 @@ class Database:
         return {row["url"]: row["content_hash"] for row in rows}
 
     async def delete_stale_pages(self, source_id: str, keep_urls: set[str]) -> int:
-        """Remove chunks of a source whose URLs were not seen in the last crawl."""
         if not keep_urls:
             return 0
         pool = await self.pool()

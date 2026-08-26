@@ -274,6 +274,7 @@ $("tabRag").addEventListener("click", () => showView("rag"));
 /* ---------- chat persistence ---------- */
 const CHAT_KEY = "docs_rag_chat";
 const CHAT_MAX = 50;
+const THINKING = '<span style="color:var(--dim)">thinking…</span>';
 
 function saveChat() {
   const msgs = [...$("chatLog").querySelectorAll(".msg")].map(el => ({
@@ -287,10 +288,11 @@ function saveChat() {
 function loadChat() {
   try {
     const msgs = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
-    msgs.forEach(m => {
+    msgs.filter(m => m.html !== THINKING).forEach(m => {
       const div = addMsg(m.cls, m.html);
       if (m.err) div.classList.add("err");
     });
+    saveChat();
   } catch {}
 }
 
@@ -304,15 +306,68 @@ function addMsg(cls, html) {
   return div;
 }
 
-/* ---------- send chat ---------- */
+/* ---------- job polling (shared) ---------- */
+async function pollJob(jobId, render, interval) {
+  for (;;) {
+    await new Promise(r => setTimeout(r, interval || 1500));
+    let job;
+    try {
+      const res = await fetch("/jobs/" + encodeURIComponent(jobId));
+      job = await res.json();
+    } catch { continue; }
+    const r = job.result || {};
+    const extra = [];
+    if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged`);
+    if (r.pages_removed) extra.push(`${r.pages_removed} removed`);
+    if (job.status === "queued" || job.status === "running") {
+      render("status", `${job.status} — crawled ${job.pages_crawled}, indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks`);
+    } else if (job.status === "done") {
+      render("ok", `done — ${r.pages_indexed}/${r.pages_crawled} pages, ${r.chunks_indexed} chunks` + (extra.length ? ` · ${extra.join(", ")}` : ""));
+      loadSources();
+      return;
+    } else {
+      render("err", `failed: ${job.error || "unknown"}`);
+      return;
+    }
+  }
+}
+
+/* ---------- chat ---------- */
+let pendingIngest = null; // {name, version} when bot asked for URL
+
 async function sendChat() {
   const q = $("chatQ").value.trim();
   if (!q) return;
   $("chatQ").value = "";
   addMsg("user", esc(q));
-  const thinking = addMsg("bot", '<span style="color:var(--dim)">thinking…</span>');
+  const thinking = addMsg("bot", THINKING);
   $("chatSend").disabled = true;
   try {
+    // If bot asked for a URL and user typed one, start ingest directly
+    if (pendingIngest && /^https?:\/\//.test(q)) {
+      const res = await fetch("/chat/ingest", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({...pendingIngest, url: q}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.status);
+      pendingIngest = null;
+      thinking.innerHTML = marked.parse(data.answer);
+      thinking.dataset.answer = data.answer;
+      saveChat();
+      if (data.job_id) {
+        pollJob(data.job_id, (cls, text) => {
+          const base = marked.parse(thinking.dataset.answer || "");
+          const badge = cls === "status" ? "" : cls;
+          thinking.innerHTML = base + `<div class="status ${badge}" style="margin-top:10px">${esc(text)}</div>`;
+          saveChat();
+          $("chatLog").scrollTop = $("chatLog").scrollHeight;
+        }, 2000);
+      }
+      return;
+    }
+
     const res = await fetch("/llm-chat?q=" + encodeURIComponent(q));
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.status);
@@ -324,61 +379,22 @@ async function sendChat() {
       (srcs ? `<div class="srcs"><strong>sources</strong><br>${srcs}</div>` : "");
     thinking.innerHTML = answerHtml;
     thinking.dataset.answer = data.answer;
+    saveChat();
 
-    if (data.job_id) {
-      pollJobInChat(data.job_id, thinking);
+    // Track pending ingest if bot is asking for a URL
+    if (data.name && data.version && !data.job_id) {
+      pendingIngest = {name: data.name, version: data.version};
     }
   } catch (err) {
     thinking.classList.add("err");
     thinking.textContent = "error: " + err.message;
+    saveChat();
   } finally {
     $("chatSend").disabled = false;
     $("chatQ").focus();
   }
 }
 
-async function pollJobInChat(jobId, msgEl) {
-  for (;;) {
-    await new Promise(r => setTimeout(r, 2000));
-    let job;
-    try {
-      const res = await fetch("/jobs/" + encodeURIComponent(jobId));
-      job = await res.json();
-    } catch { continue; }
-
-    if (job.status === "running" || job.status === "queued") {
-      const base = marked.parse(msgEl.dataset.answer || "");
-      msgEl.innerHTML = base +
-        `<div class="status" style="margin-top:10px">` +
-        `${job.status} — crawled ${job.pages_crawled}, ` +
-        `indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks` +
-        `</div>`;
-      $("chatLog").scrollTop = $("chatLog").scrollHeight;
-    } else if (job.status === "done") {
-      const r = job.result || {};
-      const extra = [];
-      if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged`);
-      if (r.pages_removed) extra.push(`${r.pages_removed} removed`);
-      const base = marked.parse(msgEl.dataset.answer || "");
-      msgEl.innerHTML = base +
-        `<div class="status ok" style="margin-top:10px">` +
-        `done — ${r.pages_indexed}/${r.pages_crawled} pages, ` +
-        `${r.chunks_indexed} chunks` +
-        (extra.length ? ` · ${extra.join(", ")}` : "") +
-        `</div>`;
-      $("chatLog").scrollTop = $("chatLog").scrollHeight;
-      loadSources();
-      return;
-    } else {
-      const base = marked.parse(msgEl.dataset.answer || "");
-      msgEl.innerHTML = base +
-        `<div class="status err" style="margin-top:10px">` +
-        `failed: ${job.error || "unknown"}</div>`;
-      $("chatLog").scrollTop = $("chatLog").scrollHeight;
-      return;
-    }
-  }
-}
 $("chatSend").addEventListener("click", sendChat);
 $("chatQ").addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); sendChat(); }
@@ -474,51 +490,15 @@ async function doIngest(ev) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.status);
-    await pollJob(data.job_id, status, btn);
+    await pollJob(data.job_id, (cls, text) => {
+      status.className = cls === "status" ? "status" : "status " + cls;
+      status.textContent = text;
+      if (cls !== "status") btn.disabled = false;
+    });
   } catch (err) {
     status.className = "status err";
     status.textContent = "error: " + err.message;
     btn.disabled = false;
-  }
-}
-
-async function pollJob(jobId, status, btn) {
-  for (;;) {
-    let job;
-    try {
-      const res = await fetch("/jobs/" + encodeURIComponent(jobId));
-      job = await res.json();
-    } catch (err) {
-      status.className = "status err";
-      status.textContent = "polling failed: " + err.message;
-      btn.disabled = false;
-      return;
-    }
-    if (job.status === "queued" || job.status === "running") {
-      status.className = "status";
-      status.textContent =
-        `${job.status} — crawled ${job.pages_crawled}, ` +
-        `indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks`;
-    } else if (job.status === "done") {
-      status.className = "status ok";
-      const r = job.result || {};
-      const extra = [];
-      if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged`);
-      if (r.pages_removed) extra.push(`${r.pages_removed} removed`);
-      status.textContent =
-        `indexed ${r.pages_indexed}/${r.pages_crawled} pages · ` +
-        `${r.chunks_indexed} chunks` +
-        (extra.length ? ` · ${extra.join(", ")}` : "");
-      btn.disabled = false;
-      loadSources();
-      return;
-    } else {
-      status.className = "status err";
-      status.textContent = `failed: ${job.error || "unknown"}`;
-      btn.disabled = false;
-      return;
-    }
-    await new Promise(r => setTimeout(r, 1500));
   }
 }
 

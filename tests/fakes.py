@@ -3,11 +3,7 @@ import math
 
 
 class HashEmbeddingProvider:
-    """Deterministic fake embeddings for development and testing only.
-
-    Produces no semantic quality; useful to exercise the full pipeline
-    without an API key or a local model.
-    """
+    """Deterministic fake embeddings for development and testing only."""
 
     name = "hash"
     dimensions = 1536

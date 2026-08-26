@@ -1,9 +1,8 @@
 import hashlib
 import json
 import logging
-import os
 import re
-import time as _time
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urldefrag, urlparse, urlunparse
@@ -19,7 +18,7 @@ NON_PAGE_EXTENSIONS = re.compile(
     re.IGNORECASE,
 )
 
-CACHE_EXPIRY = 60 * 60 * 24 * 7  # 7 days
+CACHE_EXPIRY = 60 * 60 * 24 * 7
 
 
 def normalize_url(url: str) -> str:
@@ -89,7 +88,7 @@ class DocsSpider(scrapy.Spider):
             return None
         try:
             meta = json.loads(meta_path.read_text())
-            if (meta.get("ts", 0)) < (_time.time() - CACHE_EXPIRY):
+            if (meta.get("ts", 0)) < (time.time() - CACHE_EXPIRY):
                 return None
             return {
                 "title": meta.get("title"),
@@ -107,7 +106,7 @@ class DocsSpider(scrapy.Spider):
         meta_path = self._cache_dir / f"{key}.meta.json"
         html_path = self._cache_dir / f"{key}.html"
         try:
-            meta = {"url": url, "title": title, "ts": _time.time()}
+            meta = {"url": url, "title": title, "ts": time.time()}
             if final_url:
                 meta["final_url"] = final_url
             meta_path.write_text(json.dumps(meta))

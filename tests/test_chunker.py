@@ -26,7 +26,7 @@ Returns the router object.
 
 def test_breadcrumbs_follow_heading_hierarchy():
     chunks = chunk_markdown(SAMPLE)
-    paths = {chunk.breadcrumb for chunk in chunks}
+    paths = {" > ".join(chunk.heading_path) for chunk in chunks}
     assert "Guide > Setup > Requirements" in paths
     assert "Guide > API > useRouter" in paths
     assert "Guide" in paths
@@ -34,7 +34,7 @@ def test_breadcrumbs_follow_heading_hierarchy():
 
 def test_small_child_section_absorbs_into_parent_chunk():
     chunks = chunk_markdown(SAMPLE)
-    by_path = {chunk.breadcrumb: chunk.content for chunk in chunks}
+    by_path = {" > ".join(chunk.heading_path): chunk.content for chunk in chunks}
     assert "Install the package with npm." in by_path["Guide"]
     assert "Intro paragraph" in by_path["Guide"]
 

@@ -9,7 +9,6 @@ MAX_ATTEMPTS = 3
 
 
 async def generate_llm_response(prompt: str) -> str:
-    """Send a prompt to the configured LLM provider and return its answer."""
     import httpx
 
     api_key = settings.llm_api_key

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import uuid
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -11,8 +10,6 @@ from docs_mcp.storage.db import Database
 logger = logging.getLogger(__name__)
 
 MAX_JOB_HISTORY = 100
-
-Runner = Callable[..., Awaitable[dict]]
 
 
 def _now() -> datetime:
@@ -80,8 +77,6 @@ class Job:
 
 
 class JobRegistry:
-    """In-memory job tracker. Jobs are lost when the host process exits."""
-
     def __init__(self, capacity: int = MAX_JOB_HISTORY):
         self._capacity = capacity
         self._jobs: dict[str, Job] = {}
@@ -118,18 +113,16 @@ class JobRegistry:
     def _prune(self) -> None:
         if len(self._jobs) < self._capacity:
             return
-        finished = [
-            job for job in self._jobs.values() if job.status in ("done", "failed")
-        ]
-        if finished:
-            oldest = min(finished, key=lambda job: job.finished_at or job.created_at)
-            del self._jobs[oldest.id]
+        for job in self._jobs.values():
+            if job.status in ("done", "failed"):
+                del self._jobs[job.id]
+                return
 
 
 JOBS = JobRegistry()
 
 
-async def _run_job(job: Job, runner: Runner) -> None:
+async def _run_job(job: Job, runner) -> None:
     job.status = "running"
     job.started_at = _now()
 
@@ -170,12 +163,12 @@ def submit_ingest(
     max_pages: int | None = None,
     prune_missing: bool = False,
     registry: JobRegistry = JOBS,
-    runner: Runner | None = None,
+    runner=None,
 ) -> Job:
     if runner is None:
-
-        async def runner(**kwargs) -> dict:
+        async def _default_runner(**kwargs):
             return await ingest_documentation(db, **kwargs)
+        runner = _default_runner
 
     job = registry.create(
         name=name,

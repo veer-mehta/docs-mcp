@@ -1,16 +1,16 @@
 # docs-rag
 
 `docs-rag` turns any framework documentation site into a semantic-searchable
-corpus. Crawl a docs site → extract markdown → chunk, embed (local or OpenAI)
-and store in Postgres+pgvector → search by *meaning*, not just keywords.
-Optionally serve it as an MCP server so AI clients can call it as a tool.
+corpus. Crawl a docs site → extract markdown → chunk, embed locally
+(HuggingFace) and store in Postgres+pgvector → search by *meaning*, not just
+keywords. Optionally serve it as an MCP server so AI clients can call it as a tool.
 
 ## Quick start
 
 ```bash
 git clone ... docs-rag && cd docs-rag
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[local]"        # add "[openai]" for cloud embeddings, "[dev]" for tests
+pip install -e ".[local]"        # add "[dev]" for tests
 docker compose up -d             # postgres + pgvector
 cp .env.example .env && $EDITOR .env
 ```
@@ -34,15 +34,33 @@ curl http://localhost:8000/sources
 
 ```mermaid
 flowchart LR
-    A[User / AI Client] --> B[API Server]
-    B --> C[(Postgres + pgvector)]
+    A[Browser] --> B[API Server]
     B --> D[Web UI]
-    B --> E[MCP Bridge]
-    E --> F[MCP Server Subprocess]
-    F --> C
+    B --> C[(Postgres + pgvector)]
     B --> G[Ingestion Pipeline]
     G --> H[Scraper Subprocess]
     G --> C
+    I[AI Client<br/>Claude, Cursor] -->|MCP over stdio| F[MCP Server]
+    F --> C
+```
+
+## Project layout
+
+```
+src/docs_mcp/
+├── api.py            REST API + web UI server (Starlette)
+├── chat.py           Detects "download X docs" requests in chat messages
+├── config.py         All settings, read from .env
+├── jobs.py           Background crawl jobs with live progress counters
+├── llm.py            Chat answers via any OpenAI-compatible LLM API
+├── pipeline.py       Orchestrates one ingest: crawl → extract → chunk → embed → store
+├── server.py         MCP server exposing 4 tools for AI clients
+├── embeddings/       Text → 1024-number vectors (local HuggingFace model)
+├── processing/       HTML → Markdown cleanup, and markdown → chunks splitting
+├── scraper/          Web crawler (Scrapy + headless Chrome) and its CLI
+└── static/           The web UI (one HTML file)
+scripts/demo.py       Example: use the library directly from Python
+tests/                Unit tests (pytest)
 ```
 
 ## Run modes
@@ -72,11 +90,13 @@ pages whose extracted markdown changed (sha256); skipped pages are reported as
 
 ## Embeddings & LLM
 
-Embeddings are local (HuggingFace sentence-transformers): `EMBEDDING_PROVIDER=local`
-with knobs `LOCAL_EMBEDDING_MODEL`, `LOCAL_EMBEDDING_MAX_TOKENS` (default 1024),
-`LOCAL_EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`). `hash` is a fake provider for
-tests/dev. Switching to a model with a different vector dimension requires
-dropping and re-creating the `documents` table.
+Embeddings are local (HuggingFace sentence-transformers), with knobs
+`LOCAL_EMBEDDING_MODEL`, `LOCAL_EMBEDDING_MAX_TOKENS` (default 1024),
+`LOCAL_EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`) and
+`LOCAL_EMBEDDING_MIN_FREE_VRAM_GIB` (default 4 — `auto` falls back to CPU below
+this much free VRAM; bge-m3 peaks around 3.7 GiB). Switching to a model with a
+different vector dimension requires dropping and re-creating the `documents`
+table.
 
 LLM chat answers work with **any OpenAI-compatible provider** via three `.env`
 vars: `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Examples:
@@ -97,7 +117,5 @@ vars: `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Examples:
 ## Notes / caveats
 
 - Background jobs are **in-memory** — lost on restart.
-- The web UI can search via the RAG path or through the MCP path (its own
-  subprocess) via the backend toggle — handy for comparing the two.
 - The scraper strips query strings and follows only same-host links; crawls
   obey robots.txt.
