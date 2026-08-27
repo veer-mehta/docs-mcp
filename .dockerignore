@@ -1,0 +1,13 @@
+.venv/
+.git/
+__pycache__/
+*.pyc
+tests/
+scripts/
+npm/
+.crawl-cache/
+.env
+.env.example
+AGENTS.md
+README.md
+docker-compose.yml
