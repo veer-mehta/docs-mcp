@@ -3,6 +3,20 @@
 Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFace)
 → store in Postgres+pgvector → semantic search via MCP server, REST API, and web UI.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Browser] --> B[API Server]
+    B --> D[Web UI]
+    B --> C[(Postgres + pgvector)]
+    B --> G[Ingestion Pipeline]
+    G --> H[Scraper Subprocess]
+    G --> C
+    I[AI Client<br/>Claude, Cursor] -->|MCP over stdio| F[MCP Server]
+    F --> C
+```
+
 ## Quick start
 
 ```bash
