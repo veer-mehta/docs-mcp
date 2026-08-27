@@ -3,7 +3,8 @@
 `fathom-mcp` turns any framework documentation site into a semantic-searchable
 corpus. Crawl a docs site → extract markdown → chunk, embed locally
 (HuggingFace) and store in Postgres+pgvector → search by *meaning*, not just
-keywords. Optionally serve it as an MCP server so AI clients can call it as a tool.
+keywords. Serve it as an MCP server so AI clients can call it as a tool, or use
+the REST API and web UI.
 
 ## Quick start
 
@@ -57,13 +58,14 @@ src/docs_mcp/
 ├── jobs.py           Background crawl jobs with live progress counters
 ├── llm.py            Chat answers via any OpenAI-compatible LLM API
 ├── pipeline.py       Orchestrates one ingest: crawl → extract → chunk → embed → store
-├── server.py         MCP server exposing 4 tools for AI clients
+├── server.py         MCP server exposing 5 tools for AI clients
 ├── embeddings/       Text → 1024-number vectors (local HuggingFace model)
 ├── processing/       HTML → Markdown cleanup, and markdown → chunks splitting
 ├── scraper/          Web crawler (Scrapy + headless Chrome) and its CLI
 └── static/           The web UI (one HTML file)
 scripts/demo.py       Example: use the library directly from Python
 tests/                Unit tests (pytest)
+npm/                  npm wrapper for npx distribution
 ```
 
 ## Run modes
@@ -72,35 +74,48 @@ tests/                Unit tests (pytest)
 |---|---|---|
 | `.venv/bin/docs-mcp-server` | MCP server on stdin/stdout | plug into Claude, Cursor, etc. (`background=true` returns a job id immediately) |
 | `.venv/bin/docs-mcp-api` | web UI `http://127.0.0.1:8000` + REST API | browser search / `POST /ingest` (`"background":true` → 202, poll `GET /jobs/{id}`) |
+| `npx @fathom-mcp/server` | same as above, auto-setup venv | no local clone needed — first run installs deps |
 | `scripts/demo.py` | nothing | drive the library directly from Python |
 
 ## Connecting to OpenCode
 
-The project ships with `.opencode.jsonc` and `bin/mcp-server` — a wrapper that
-locates the venv from the project root. OpenCode picks it up automatically when
-you open this directory.
+Add to `~/.config/opencode/opencode.jsonc`:
 
-```bash
-# First-time setup (if not done above)
-source .venv/bin/activate
-pip install -e ".[local]"
+```json
+{
+  "mcp": {
+    "fathom-mcp": {
+      "type": "local",
+      "command": ["npx", "-y", "@fathom-mcp/server"]
+    }
+  }
+}
 ```
 
-Then open the project in OpenCode. The MCP panel should show `fathom-mcp` with four
-tools: `add_documentation`, `get_ingest_status`, `search_documentation`,
-`list_sources`.
+Or if running from a local clone:
+
+```json
+{
+  "mcp": {
+    "fathom-mcp": {
+      "type": "local",
+      "command": ["node", "npm/bin/docs-mcp-server.js"],
+      "cwd": "/path/to/fathom-mcp"
+    }
+  }
+}
+```
+
+The MCP panel should show `fathom-mcp` with five tools.
 
 Example prompts once connected:
 
 ```
 search_documentation for "how to define a custom validator"
 add_documentation react latest https://react.dev/learn
+add_local_docs name="internal-api" path="/path/to/docs"
 list_sources
 ```
-
-**Global config caveat:** A project-level `mcp` section replaces the global one
-(known OpenCode behaviour as of v1.15.13+). If you have other MCP servers in
-`~/.config/opencode/opencode.jsonc`, merge them into `.opencode.jsonc`.
 
 ## Tools / endpoints
 
@@ -110,8 +125,12 @@ list_sources
 | `search_documentation(query, name?, version?, k=5, mode="hybrid")` | `GET /search` | Semantic search. `mode` = `hybrid` (vector + keyword, RRF-fused, default) · `vector` · `keyword`. |
 | `list_sources()` | `GET /sources` | Indexed sources with page/chunk counts |
 | `get_ingest_status(job_id)` | `GET /jobs/{id}` | Progress/live counters of a background job |
+| `add_local_docs(name, path, recursive=true)` | `POST /upload-folder` | Index a local folder of docs (HTML/MD/PDF/TXT) |
+| — | `POST /upload` | Upload files via multipart form |
 | — | `GET /jobs` | Recent job history |
 | — | `DELETE /sources/{source_id}` | Wipe one indexed source |
+| — | `GET /about` | System info, stats, version |
+| — | `GET /llm-chat?q=...` | Chat with docs via LLM |
 
 ## Incremental re-crawl
 
