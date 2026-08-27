@@ -21,6 +21,8 @@ class Job:
     max_depth: int | None
     max_pages: int | None
     prune_missing: bool = False
+    lang: str = ""
+    sitemap: bool = False
     status: str = "queued"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
@@ -70,11 +72,14 @@ class JobRegistry:
         max_depth: int | None,
         max_pages: int | None,
         prune_missing: bool = False,
+        lang: str = "",
+        sitemap: bool = False,
     ) -> Job:
         job = Job(
             id=uuid.uuid4().hex[:8],
             name=name, version=version, base_url=base_url,
             max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing,
+            lang=lang, sitemap=sitemap,
         )
         self._prune()
         self._jobs[job.id] = job
@@ -107,6 +112,8 @@ def submit_ingest(
     max_depth: int | None = None,
     max_pages: int | None = None,
     prune_missing: bool = False,
+    lang: str = "",
+    sitemap: bool = False,
     registry: JobRegistry = JOBS,
     _runner=None,
 ) -> Job:
@@ -136,6 +143,7 @@ def submit_ingest(
                     db, name=job.name, version=job.version,
                     base_url=job.base_url, max_depth=job.max_depth,
                     max_pages=job.max_pages, prune_missing=job.prune_missing,
+                    lang=job.lang, sitemap=job.sitemap,
                     on_progress=on_progress,
                 )
             job.status = "done"
@@ -149,6 +157,7 @@ def submit_ingest(
     job = registry.create(
         name=name, version=version, base_url=base_url,
         max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing,
+        lang=lang, sitemap=sitemap,
     )
     job._task = asyncio.get_running_loop().create_task(_run(job))
     return job

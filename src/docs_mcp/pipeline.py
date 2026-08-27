@@ -16,7 +16,7 @@ from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
 
-EMBED_BATCH_SIZE = 32
+EMBED_BATCH_SIZE = 8
 
 
 @dataclass
@@ -50,6 +50,8 @@ async def ingest_documentation(
     max_pages: int | None = None,
     on_progress: Callable[[IngestResult], None] | None = None,
     prune_missing: bool = False,
+    lang: str = "",
+    sitemap: bool = False,
 ) -> dict:
     source_id = f"{name}@{version}"
     provider = get_embedding_provider()
@@ -62,7 +64,7 @@ async def ingest_documentation(
             on_progress(result)
 
     with tempfile.TemporaryFile(mode="w+b") as stderr_file:
-        proc = await asyncio.create_subprocess_exec(
+        cmd = [
             sys.executable,
             "-m",
             "docs_mcp.scraper.runner",
@@ -74,6 +76,13 @@ async def ingest_documentation(
             str(max_pages if max_pages is not None else settings.crawl_max_pages),
             "--cache-dir",
             settings.crawl_cache_dir,
+        ]
+        if lang:
+            cmd.extend(["--lang", lang])
+        if sitemap:
+            cmd.append("--sitemap")
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=stderr_file,
             limit=64 * 1024 * 1024,

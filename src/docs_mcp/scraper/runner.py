@@ -25,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--user-agent", default=settings.user_agent)
     parser.add_argument("--cache-dir", default=settings.crawl_cache_dir)
     parser.add_argument("--no-cache", action="store_true")
+    parser.add_argument("--lang", default="", help="Only follow pages for this language (e.g. en)")
+    parser.add_argument("--sitemap", action="store_true", help="Discover pages from sitemap.xml instead of link-following")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
@@ -46,6 +48,8 @@ def main(argv: list[str] | None = None) -> int:
         max_depth=args.depth,
         max_pages=args.max_pages,
         cache_dir=cache_dir,
+        lang=args.lang,
+        sitemap=args.sitemap,
     )
     process.start()
     return 0

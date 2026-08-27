@@ -56,6 +56,8 @@ async def ingest(request):
             max_depth=payload.get("max_depth"),
             max_pages=payload.get("max_pages"),
             prune_missing=bool(payload.get("prune_missing")),
+            lang=payload.get("lang", ""),
+            sitemap=bool(payload.get("sitemap")),
         )
         return JSONResponse(
             {"job_id": job.id, "status": job.status, "poll": f"/jobs/{job.id}"},
@@ -69,6 +71,8 @@ async def ingest(request):
         max_depth=payload.get("max_depth"),
         max_pages=payload.get("max_pages"),
         prune_missing=bool(payload.get("prune_missing")),
+        lang=payload.get("lang", ""),
+        sitemap=bool(payload.get("sitemap")),
     )
     return JSONResponse(result)
 

@@ -18,6 +18,8 @@ NON_PAGE_EXTENSIONS = re.compile(
     re.IGNORECASE,
 )
 
+LANG_SEGMENT = re.compile(r"^[a-z]{2}(-[a-z]{2,3})?$")
+
 CACHE_EXPIRY = 60 * 60 * 24 * 7
 
 
@@ -59,6 +61,8 @@ class DocsSpider(scrapy.Spider):
         max_depth: int = 2,
         max_pages: int = 30,
         cache_dir: str | None = None,
+        lang: str = "",
+        sitemap: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -68,6 +72,8 @@ class DocsSpider(scrapy.Spider):
         self.base_path = ""
         self.max_depth = int(max_depth)
         self.max_pages = int(max_pages)
+        self.lang = lang.lower().strip()
+        self.use_sitemap = sitemap
         self.seen: set[str] = set()
         self.emitted: set[str] = set()
         self._root_landed = False
@@ -115,6 +121,32 @@ class DocsSpider(scrapy.Spider):
             self.logger.warning("cache write failed for %s: %s", url, e)
 
     async def start(self):
+        if self.use_sitemap:
+            urls = await self._fetch_sitemap()
+            if urls:
+                self.logger.info("sitemap: found %d urls", len(urls))
+                for url in urls[: self.max_pages]:
+                    if url in self.seen:
+                        continue
+                    self.seen.add(url)
+                    cached = self._cache_get(url)
+                    if cached is not None:
+                        self._cache_hits += 1
+                        response = HtmlResponse(
+                            url=cached["final_url"],
+                            body=cached["html"].encode("utf-8"),
+                            encoding="utf-8",
+                            request=scrapy.Request(url),
+                        )
+                        response.meta["depth"] = 0
+                        for item in self.parse_page(response):
+                            yield item
+                    else:
+                        self._cache_misses += 1
+                        req = self._request(url)
+                        req.meta["depth"] = 0
+                        yield req
+                return
         cached = self._cache_get(self.base_url)
         if cached is not None:
             self._cache_hits += 1
@@ -130,6 +162,36 @@ class DocsSpider(scrapy.Spider):
         else:
             self._cache_misses += 1
             yield self._request(self.base_url)
+
+    async def _fetch_sitemap(self) -> list[str]:
+        import httpx
+
+        sitemap_url = self.base_url.rstrip("/") + "/sitemap.xml"
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(sitemap_url)
+                resp.raise_for_status()
+        except Exception as exc:
+            self.logger.warning("sitemap fetch failed: %s", exc)
+            return []
+        import xml.etree.ElementTree as ET
+
+        try:
+            root = ET.fromstring(resp.text)
+        except ET.ParseError as exc:
+            self.logger.warning("sitemap parse failed: %s", exc)
+            return []
+        ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        urls = []
+        for loc in root.findall(".//s:loc", ns):
+            text = (loc.text or "").strip()
+            if not text:
+                continue
+            normalized = normalize_url(text)
+            if not self._should_follow(normalized):
+                continue
+            urls.append(normalized)
+        return urls
 
     def _request(self, url: str) -> scrapy.Request:
         return scrapy.Request(
@@ -210,7 +272,18 @@ class DocsSpider(scrapy.Spider):
             return False
         if NON_PAGE_EXTENSIONS.search(parsed.path):
             return False
+        if self.lang and not self._lang_matches(parsed.path):
+            return False
         return True
+
+    def _lang_matches(self, path: str) -> bool:
+        segments = [s for s in path.split("/") if s]
+        if not segments:
+            return True
+        first = segments[0]
+        if not LANG_SEGMENT.match(first):
+            return True
+        return first == self.lang or first.startswith(self.lang + "-")
 
     def on_error(self, failure) -> None:
         self.logger.warning(

@@ -24,6 +24,8 @@ async def add_documentation(
     max_pages: int = 30,
     background: bool = False,
     prune_missing: bool = False,
+    lang: str = "",
+    sitemap: bool = False,
 ) -> str:
     """Crawl a framework/library documentation site and index it for semantic search.
 
@@ -42,6 +44,11 @@ async def add_documentation(
         prune_missing: If true, delete indexed pages that this crawl did not
             visit. Only enable when depth/page caps cover the whole site,
             otherwise capped crawls would delete valid pages.
+        lang: ISO 639-1 language code to filter pages (e.g. "en").
+            Only pages matching this language are crawled.
+        sitemap: If true, discover pages from sitemap.xml instead of
+            following links. Gives better coverage for docs sites
+            that expose a sitemap.
     """
     if background:
         job = submit_ingest(
@@ -52,6 +59,8 @@ async def add_documentation(
             max_depth=max_depth,
             max_pages=max_pages,
             prune_missing=prune_missing,
+            lang=lang,
+            sitemap=sitemap,
         )
         return json.dumps(
             {
@@ -62,7 +71,8 @@ async def add_documentation(
             }
         )
     result = await ingest_documentation(
-        db, name, version, base_url, max_depth=max_depth, max_pages=max_pages
+        db, name, version, base_url, max_depth=max_depth, max_pages=max_pages,
+        lang=lang, sitemap=sitemap,
     )
     return json.dumps(result)
 
