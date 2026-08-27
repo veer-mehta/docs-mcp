@@ -188,6 +188,21 @@
 
   .empty { color: var(--dim); text-align: center; padding: 32px 0; font-size: 15px; font-style: italic; }
 
+  .about-body { font-size: 16px; color: var(--muted); line-height: 1.7; }
+  .about-body p { margin: 0 0 16px; }
+  .about-links { display: flex; gap: 12px; align-items: center; font-family: var(--mono); font-size: 13px; }
+  .about-links .dim { color: var(--dim); }
+  .about-refresh { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .about-refresh .btn-ghost { font-size: 11px; }
+  .about-updated { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+
+  .src-badge {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px;
+    padding: 2px 7px; border-radius: 4px; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--dim); vertical-align: middle;
+    margin-left: 6px;
+  }
+
   /* ---------- upload zone ---------- */
   .upload-zone {
     border: 1px dashed var(--border2); border-radius: 10px;
@@ -247,6 +262,7 @@
   <div class="tabs">
     <button id="tabChat" class="on" type="button">chat</button>
     <button id="tabRag" type="button">search &amp; sources</button>
+    <button id="tabAbout" type="button">about</button>
   </div>
 
   <!-- ============ chat ============ -->
@@ -359,6 +375,32 @@
       </div>
     </details>
   </section>
+
+  <!-- ============ about ============ -->
+  <section id="viewAbout" class="view">
+    <div class="about-refresh">
+      <span class="about-updated" id="aboutUpdated"></span>
+      <button class="btn-ghost" id="aboutRefresh" type="button">refresh</button>
+    </div>
+    <div class="section-label">system</div>
+    <table class="tbl" id="aboutTable">
+      <tbody><tr><td colspan="2" class="empty">loading…</td></tr></tbody>
+    </table>
+
+    <hr class="divider">
+
+    <div class="section-label">about</div>
+    <div class="about-body">
+      <p>Documentation RAG system: crawl a docs site, upload files, or index a local folder — then semantic search and chat with your docs via MCP, REST API, or web UI.</p>
+      <p class="about-links">
+        <a href="https://github.com/yourname/docs-mcp" target="_blank" rel="noopener">github</a>
+        <span class="dim">·</span>
+        <a href="https://pypi.org/project/docs-mcp/" target="_blank" rel="noopener">pypi</a>
+        <span class="dim">·</span>
+        <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">mcp protocol</a>
+      </p>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -397,14 +439,17 @@ function setHTML(el, html) { el.innerHTML = clean(html); }
 
 /* ---------- view switching ---------- */
 function showView(tab) {
-  const chat = tab === "chat";
-  $("tabChat").classList.toggle("on", chat);
-  $("tabRag").classList.toggle("on", !chat);
-  $("viewChat").classList.toggle("on", chat);
-  $("viewRag").classList.toggle("on", !chat);
+  $("tabChat").classList.toggle("on", tab === "chat");
+  $("tabRag").classList.toggle("on", tab === "rag");
+  $("tabAbout").classList.toggle("on", tab === "about");
+  $("viewChat").classList.toggle("on", tab === "chat");
+  $("viewRag").classList.toggle("on", tab === "rag");
+  $("viewAbout").classList.toggle("on", tab === "about");
+  if (tab === "about") { loadAbout(); startAboutPoll(); } else { stopAboutPoll(); }
 }
 $("tabChat").addEventListener("click", () => showView("chat"));
 $("tabRag").addEventListener("click", () => showView("rag"));
+$("tabAbout").addEventListener("click", () => showView("about"));
 
 /* ---------- chat persistence ---------- */
 const CHAT_KEY = "docs_rag_chat";
@@ -573,7 +618,7 @@ function renderHits(hits) {
   hits.forEach((h, i) => {
     let g = byUrl.get(h.url);
     if (!g) {
-      g = { url: h.url, title: h.title || h.url, rank: i + 1, chunks: [] };
+      g = { url: h.url, title: h.title || h.url, rank: i + 1, chunks: [], source_id: h.source_id || "" };
       byUrl.set(h.url, g);
       groups.push(g);
     }
@@ -584,6 +629,7 @@ function renderHits(hits) {
       <div class="hit-head">
         <span class="rank">#${g.rank}</span>
         <a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a>
+        ${g.source_id ? `<span class="src-badge">${esc(g.source_id)}</span>` : ""}
         ${g.chunks.length > 1 ? `<span class="count">${g.chunks.length} chunks</span>` : ""}
       </div>
       ${g.chunks.map(c => `
@@ -664,6 +710,15 @@ $("hits").addEventListener("click", (e) => {
 });
 
 /* ---------- sources ---------- */
+function sourceTimeAgo(iso) {
+  if (!iso) return "";
+  const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (sec < 60) return "just now";
+  if (sec < 3600) return Math.floor(sec / 60) + "m ago";
+  if (sec < 86400) return Math.floor(sec / 3600) + "h ago";
+  return Math.floor(sec / 86400) + "d ago";
+}
+
 async function loadSources() {
   try {
     const res = await fetch("/sources");
@@ -677,7 +732,7 @@ async function loadSources() {
         <td>${esc(s.source_id)}</td>
         <td class="num">${s.pages}</td>
         <td class="num">${s.chunks}</td>
-        <td style="color:var(--dim)">${esc(String(s.updated_at || "").slice(0, 16).replace("T", " "))}</td>
+        <td style="color:var(--dim)" title="${esc(String(s.updated_at || ""))}">${sourceTimeAgo(s.updated_at)}</td>
         <td style="text-align:right">
           <button class="btn-ghost" data-del="${esc(s.source_id)}">delete</button>
         </td>
@@ -834,6 +889,49 @@ $("folderBtn").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
+/* ---------- about / dashboard ---------- */
+let aboutTimer = null;
+
+function aboutTimeAgo(ts) {
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 5) return "just now";
+  if (sec < 60) return sec + "s ago";
+  if (sec < 3600) return Math.floor(sec / 60) + "m ago";
+  return Math.floor(sec / 3600) + "h ago";
+}
+
+async function loadAbout() {
+  try {
+    const res = await fetch("/about");
+    const d = await res.json();
+    $("aboutTable").innerHTML = [
+      ["version", d.version],
+      ["python", d.python],
+      ["embedding model", d.embedding_model],
+      ["embedding dims", d.embedding_dims],
+      ["llm model", d.llm_model],
+      ["database", d.database],
+      ["indexed sources", d.sources],
+      ["total pages", d.pages],
+      ["total chunks", d.chunks],
+      ["crawl depth", d.max_depth],
+      ["max pages/crawl", d.max_pages],
+    ].map(([k, v]) => `<tr><td style="color:var(--dim)">${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join("");
+    const ts = Date.now();
+    $("aboutUpdated").textContent = "updated " + aboutTimeAgo(ts);
+    $("aboutUpdated").dataset.ts = ts;
+  } catch {
+    $("aboutTable").innerHTML = `<tr><td colspan="2" class="empty">failed to load</td></tr>`;
+  }
+}
+
+function startAboutPoll() {
+  stopAboutPoll();
+  aboutTimer = setInterval(loadAbout, 30000);
+}
+function stopAboutPoll() { if (aboutTimer) { clearInterval(aboutTimer); aboutTimer = null; } }
+$("aboutRefresh").addEventListener("click", loadAbout);
 
 loadChat();
 if (!$("chatLog").querySelectorAll(".msg").length) {

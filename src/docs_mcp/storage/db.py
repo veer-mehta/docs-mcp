@@ -53,6 +53,7 @@ class SearchHit:
     title: str | None
     heading_path: list[str]
     content: str
+    source_id: str = ""
     similarity: float | None = None
     bm25_score: float | None = None
 
@@ -157,7 +158,7 @@ class Database:
     ) -> list[asyncpg.Record]:
         pool = await self.pool()
         return await pool.fetch(
-            f"SELECT id, url, title, heading_path, content, "
+            f"SELECT id, url, title, heading_path, content, source_id, "
             f"1 - (embedding <=> $1::vector) AS similarity "
             f"FROM {self._table} WHERE ($2::text IS NULL OR source_id LIKE $2) "
             f"ORDER BY embedding <=> $1::vector LIMIT $3",
@@ -171,7 +172,7 @@ class Database:
     ) -> list[asyncpg.Record]:
         pool = await self.pool()
         return await pool.fetch(
-            f"SELECT id, url, title, heading_path, content, "
+            f"SELECT id, url, title, heading_path, content, source_id, "
             f"ts_rank_cd(to_tsvector('english', content), "
             f"websearch_to_tsquery('english', $1)) AS bm25_score "
             f"FROM {self._table} "
@@ -191,6 +192,7 @@ class Database:
             title=row["title"],
             heading_path=list(row["heading_path"]),
             content=row["content"],
+            source_id=row.get("source_id", ""),
             similarity=float(row["similarity"]) if "similarity" in row.keys() else None,
             bm25_score=float(row["bm25_score"]) if "bm25_score" in row.keys() else None,
         )
@@ -250,6 +252,7 @@ class Database:
                 title=rep["title"],
                 heading_path=list(rep["heading_path"]),
                 content=rep["content"],
+                source_id=rep.get("source_id", ""),
                 similarity=sim,
                 bm25_score=bm25,
             )
@@ -275,3 +278,5 @@ class Database:
     async def drop_table(self) -> None:
         pool = await self.pool()
         await pool.execute(f"DROP TABLE IF EXISTS {self._table}")
+
+

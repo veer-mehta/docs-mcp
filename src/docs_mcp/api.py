@@ -1,4 +1,5 @@
 import logging
+import sys
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import datetime
@@ -9,6 +10,7 @@ from starlette.applications import Starlette
 from starlette.responses import FileResponse, JSONResponse
 from starlette.routing import Route
 
+from docs_mcp import __version__
 from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.jobs import JOBS, submit_ingest
@@ -130,6 +132,26 @@ async def delete_source(request):
     return JSONResponse({"deleted": deleted, "source_id": source_id})
 
 
+async def about(request):
+    provider = get_embedding_provider()
+    rows = await db.list_sources()
+    total_pages = sum(r.get("pages", 0) for r in rows)
+    total_chunks = sum(r.get("chunks", 0) for r in rows)
+    return JSONResponse({
+        "version": __version__,
+        "python": sys.version.split()[0],
+        "embedding_model": provider.name,
+        "embedding_dims": provider.dimensions,
+        "llm_model": settings.llm_model or "(not configured)",
+        "database": settings.database_url.split("@")[-1] if "@" in settings.database_url else settings.database_url,
+        "sources": len(rows),
+        "pages": total_pages,
+        "chunks": total_chunks,
+        "max_depth": settings.crawl_max_depth,
+        "max_pages": settings.crawl_max_pages,
+    })
+
+
 async def index(request):
     return FileResponse(INDEX_HTML)
 
@@ -235,6 +257,7 @@ async def upload_folder(request):
 
 routes = [
     Route("/", index, methods=["GET"]),
+    Route("/about", about, methods=["GET"]),
     Route("/search", search, methods=["GET"]),
     Route("/sources", sources, methods=["GET"]),
     Route("/sources/{source_id}", delete_source, methods=["DELETE"]),
