@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from docs_mcp.jobs import JobRegistry, submit_ingest
 
 
@@ -23,8 +25,8 @@ def test_registry_prunes_oldest_finished_when_full():
     ]
     for i, job in enumerate(jobs):
         job.status = "done"
-        from docs_mcp.jobs import _now
-        job.finished_at = _now()
+        pass
+        job.finished_at = datetime.now(timezone.utc)
     extra = reg.create(name="overflow", version="1", base_url="https://x.dev",
                        max_depth=None, max_pages=None)
     ids = {job.id for job in reg._jobs.values()}
@@ -55,7 +57,7 @@ async def test_submit_ingest_lifecycle_done():
     reg = JobRegistry()
     job = submit_ingest(
         None, name="x", version="1", base_url="https://x.dev",
-        max_depth=1, max_pages=5, registry=reg, runner=fake_runner,
+        max_depth=1, max_pages=5, registry=reg, _runner=fake_runner,
     )
     assert job.status in ("queued", "running")
     await job.wait_done()
@@ -80,7 +82,7 @@ async def test_submit_ingest_failure_captured():
     reg = JobRegistry()
     job = submit_ingest(
         None, name="y", version="2", base_url="https://y.dev",
-        max_depth=None, max_pages=None, registry=reg, runner=boom,
+        max_depth=None, max_pages=None, registry=reg, _runner=boom,
     )
     await job.wait_done()
 

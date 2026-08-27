@@ -5,10 +5,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE_DIR = PROJECT_ROOT / ".crawl-cache"
 
+HOME_DIR = Path.home()
+NPM_ENV = HOME_DIR / ".docs-mcp" / ".env"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(PROJECT_ROOT / ".env"),
+        env_file=(str(NPM_ENV), str(PROJECT_ROOT / ".env")),
         env_file_encoding="utf-8",
         extra="ignore",
     )

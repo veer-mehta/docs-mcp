@@ -9,11 +9,10 @@ from docs_mcp.config import settings
 from docs_mcp.scraper.spider import DocsSpider
 
 
-class JsonlStdoutPipeline:
-    def process_item(self, item, spider):
-        sys.stdout.write(json.dumps(item, ensure_ascii=False) + "\n")
-        sys.stdout.flush()
-        return item
+def _write_jsonl(item, spider):
+    sys.stdout.write(json.dumps(item, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+    return item
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -33,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
 
     process = CrawlerProcess(
         settings={
-            "ITEM_PIPELINES": {"docs_mcp.scraper.runner.JsonlStdoutPipeline": 100},
+            "ITEM_PIPELINES": {"docs_mcp.scraper.runner._write_jsonl": 100},
             "LOG_LEVEL": "WARNING",
             "DOWNLOAD_DELAY": args.delay,
             "USER_AGENT": args.user_agent,

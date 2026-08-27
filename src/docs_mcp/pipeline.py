@@ -30,8 +30,15 @@ class IngestResult:
     pages_removed: int = 0
 
 
-def content_hash(markdown: str) -> str:
-    return hashlib.sha256(markdown.encode("utf-8")).hexdigest()
+async def _flush_pending(provider, db, pending, result):
+    if not pending:
+        return
+    vectors = await provider.embed([row["content"] for row in pending])
+    for row, vector in zip(pending, vectors):
+        row["embedding"] = vector
+    await db.upsert_chunks(pending)
+    result.chunks_indexed += len(pending)
+    pending.clear()
 
 
 async def ingest_documentation(
@@ -43,7 +50,7 @@ async def ingest_documentation(
     max_pages: int | None = None,
     on_progress: Callable[[IngestResult], None] | None = None,
     prune_missing: bool = False,
-) -> IngestResult:
+) -> dict:
     source_id = f"{name}@{version}"
     provider = get_embedding_provider()
     await db.ensure_schema(provider.dimensions)
@@ -82,18 +89,6 @@ async def ingest_documentation(
         report()
         pending: list[dict] = []
 
-        async def flush() -> None:
-            nonlocal pending
-            if not pending:
-                return
-            vectors = await provider.embed([row["content"] for row in pending])
-            for row, vector in zip(pending, vectors):
-                row["embedding"] = vector
-            await db.upsert_chunks(pending)
-            result.chunks_indexed += len(pending)
-            pending = []
-            report()
-
         assert proc.stdout is not None
         async for raw in proc.stdout:
             line = raw.decode("utf-8", errors="replace").strip()
@@ -113,7 +108,7 @@ async def ingest_documentation(
                 continue
             url = page["url"]
             seen_urls.add(url)
-            page_hash = content_hash(markdown)
+            page_hash = hashlib.sha256(markdown.encode()).hexdigest()
             if known_hashes.get(url) == page_hash:
                 result.pages_unchanged += 1
                 report()
@@ -136,9 +131,9 @@ async def ingest_documentation(
             result.pages_indexed += 1
             report()
             if len(pending) >= EMBED_BATCH_SIZE:
-                await flush()
+                await _flush_pending(provider, db, pending, result)
 
-        await flush()
+        await _flush_pending(provider, db, pending, result)
         report()
         return_code = await proc.wait()
         if return_code != 0:
@@ -147,8 +142,6 @@ async def ingest_documentation(
             tail = stderr_file.read().decode(errors="replace")[-2000:]
             logger.error("crawler exited with %s: %s", return_code, tail)
         elif prune_missing and seen_urls:
-            # Only prune on a clean crawl that saw at least one page; callers
-            # should leave caps high enough to cover the whole site.
             result.pages_removed = await db.delete_stale_pages(source_id, seen_urls)
 
     return asdict(result)
@@ -172,23 +165,10 @@ async def ingest_files(
     )
     pending: list[dict] = []
 
-    async def flush() -> None:
-        nonlocal pending
-        if not pending:
-            return
-        vectors = await provider.embed([row["content"] for row in pending])
-        for row, vector in zip(pending, vectors):
-            row["embedding"] = vector
-        await db.upsert_chunks(pending)
-        result.chunks_indexed += len(pending)
-        pending = []
-
     for filename, content in files:
         result.pages_crawled += 1
         safe_suffix = Path(filename).suffix or ".tmp"
-        with tempfile.NamedTemporaryFile(
-            suffix=safe_suffix, delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=safe_suffix, delete=False) as tmp:
             tmp.write(content)
             tmp_path = Path(tmp.name)
         try:
@@ -198,7 +178,7 @@ async def ingest_files(
                 continue
             chunks = chunk_markdown(markdown)
             url = f"file:///{filename}"
-            page_hash = content_hash(markdown)
+            page_hash = hashlib.sha256(markdown.encode()).hexdigest()
             for index, chunk in enumerate(chunks):
                 pending.append(
                     {
@@ -215,11 +195,11 @@ async def ingest_files(
                 )
             result.pages_indexed += 1
             if len(pending) >= EMBED_BATCH_SIZE:
-                await flush()
+                await _flush_pending(provider, db, pending, result)
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    await flush()
+    await _flush_pending(provider, db, pending, result)
     return result
 
 
@@ -236,19 +216,14 @@ async def ingest_folder(
     if not root.is_dir():
         return IngestResult(
             source_id=f"{name}@latest",
-            pages_crawled=0,
-            pages_indexed=0,
-            chunks_indexed=0,
-            errors=1,
+            pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=1,
         )
 
     files: list[tuple[str, bytes]] = []
     seen_inodes: set[int] = set()
     iterator = root.rglob("*") if recursive else root.iterdir()
     for p in sorted(iterator):
-        if p.name.startswith("."):
-            continue
-        if not p.is_file():
+        if p.name.startswith(".") or not p.is_file():
             continue
         try:
             inode = p.stat().st_ino
@@ -263,7 +238,6 @@ async def ingest_folder(
             content = p.read_bytes()
         except OSError:
             continue
-        rel = str(p.relative_to(root))
-        files.append((rel, content))
+        files.append((str(p.relative_to(root)), content))
 
     return await ingest_files(db, name=name, files=files)
