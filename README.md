@@ -7,27 +7,30 @@ keywords. Optionally serve it as an MCP server so AI clients can call it as a to
 
 ## Quick start
 
+**Prerequisites:** Python ≥ 3.12, Docker, Node.js (optional, for sanitizer checks).
+
 ```bash
 git clone ... docs-rag && cd docs-rag
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[local]"        # add "[dev]" for tests
-docker compose up -d             # postgres + pgvector
-cp .env.example .env && $EDITOR .env
+pip install -e ".[local]"        # add "[dev]" for tests + sanitizer checks
+docker compose up -d             # postgres + pgvector on localhost:5432
+cp .env.example .env             # edit .env — set LLM_API_KEY at minimum
 ```
 
-Index a site and ask it a question:
+The database is created automatically on first query. No manual migration needed.
+
+Index a site and search it:
 
 ```bash
-.venv/bin/python scripts/demo.py        # ingests pydantic docs and runs sample queries
-# …or:
-.venv/bin/python -m docs_mcp.scraper.runner --url https://docs.pydantic.dev/latest/ --depth 1 --max-pages 6 > pages.jsonl
-```
-
-Search it (via CLI/API/MCP/web):
-
-```bash
+.venv/bin/docs-mcp-api             # starts API + web UI on http://127.0.0.1:8000
+# in another terminal:
 curl 'http://localhost:8000/search?q=how+do+I+install+pydantic&mode=hybrid'
-curl http://localhost:8000/sources
+```
+
+Or run the demo script (ingests pydantic docs, runs sample queries):
+
+```bash
+.venv/bin/python scripts/demo.py
 ```
 
 ## Architecture
@@ -70,6 +73,34 @@ tests/                Unit tests (pytest)
 | `.venv/bin/docs-mcp-server` | MCP server on stdin/stdout | plug into Claude, Cursor, etc. (`background=true` returns a job id immediately) |
 | `.venv/bin/docs-mcp-api` | web UI `http://127.0.0.1:8000` + REST API | browser search / `POST /ingest` (`"background":true` → 202, poll `GET /jobs/{id}`) |
 | `scripts/demo.py` | nothing | drive the library directly from Python |
+
+## Connecting to OpenCode
+
+The project ships with `.opencode.jsonc` and `bin/mcp-server` — a wrapper that
+locates the venv from the project root. OpenCode picks it up automatically when
+you open this directory.
+
+```bash
+# First-time setup (if not done above)
+source .venv/bin/activate
+pip install -e ".[local]"
+```
+
+Then open the project in OpenCode. The MCP panel should show `docs-rag` with four
+tools: `add_documentation`, `get_ingest_status`, `search_documentation`,
+`list_sources`.
+
+Example prompts once connected:
+
+```
+search_documentation for "how to define a custom validator"
+add_documentation react latest https://react.dev/learn
+list_sources
+```
+
+**Global config caveat:** A project-level `mcp` section replaces the global one
+(known OpenCode behaviour as of v1.15.13+). If you have other MCP servers in
+`~/.config/opencode/opencode.jsonc`, merge them into `.opencode.jsonc`.
 
 ## Tools / endpoints
 
