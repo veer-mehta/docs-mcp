@@ -274,6 +274,9 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
+  footer { text-align: center; padding: 1rem 0 .5rem; font: .75rem var(--mono); color: var(--dim); }
+  footer a { color: var(--dim); }
+  footer a:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -459,6 +462,7 @@
     </div>
   </section>
 </div>
+<footer>created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer</a></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
