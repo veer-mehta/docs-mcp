@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE_DIR = PROJECT_ROOT / ".crawl-cache"
 
 HOME_DIR = Path.home()
-NPM_ENV = HOME_DIR / ".docs-mcp" / ".env"
+NPM_ENV = HOME_DIR / ".fathom-mcp" / ".env"
 
 
 class Settings(BaseSettings):
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     crawl_max_pages: int = 30
     crawl_delay: float = 0.5
     crawl_cache_dir: str = str(DEFAULT_CACHE_DIR)
-    user_agent: str = "docs-mcp-bot/0.1 (documentation indexer)"
+    user_agent: str = "fathom-mcp/0.1 (documentation indexer)"
     mcp_transport: str = "stdio"
     api_host: str = "127.0.0.1"
     api_port: int = 8000

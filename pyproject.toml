@@ -1,5 +1,5 @@
 [project]
-name = "docs-mcp"
+name = "fathom-mcp"
 version = "0.1.0"
 description = "MCP server that ingests framework documentation and serves it over a RAG pipeline"
 readme = "README.md"

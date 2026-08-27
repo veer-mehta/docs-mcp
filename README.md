@@ -1,6 +1,6 @@
-# docs-rag
+# fathom-mcp
 
-`docs-rag` turns any framework documentation site into a semantic-searchable
+`fathom-mcp` turns any framework documentation site into a semantic-searchable
 corpus. Crawl a docs site → extract markdown → chunk, embed locally
 (HuggingFace) and store in Postgres+pgvector → search by *meaning*, not just
 keywords. Optionally serve it as an MCP server so AI clients can call it as a tool.
@@ -10,7 +10,7 @@ keywords. Optionally serve it as an MCP server so AI clients can call it as a to
 **Prerequisites:** Python ≥ 3.12, Docker, Node.js (optional, for sanitizer checks).
 
 ```bash
-git clone ... docs-rag && cd docs-rag
+git clone ... fathom-mcp && cd fathom-mcp
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[local]"        # add "[dev]" for tests + sanitizer checks
 docker compose up -d             # postgres + pgvector on localhost:5432
@@ -86,7 +86,7 @@ source .venv/bin/activate
 pip install -e ".[local]"
 ```
 
-Then open the project in OpenCode. The MCP panel should show `docs-rag` with four
+Then open the project in OpenCode. The MCP panel should show `fathom-mcp` with four
 tools: `add_documentation`, `get_ingest_status`, `search_documentation`,
 `list_sources`.
 

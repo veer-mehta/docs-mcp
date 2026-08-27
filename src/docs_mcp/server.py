@@ -11,7 +11,7 @@ from docs_mcp.storage.db import Database, source_pattern
 
 logger = logging.getLogger(__name__)
 
-mcp = MCPServer("docs-rag")
+mcp = MCPServer("fathom-mcp")
 db = Database(settings.database_url)
 
 
