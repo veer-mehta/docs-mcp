@@ -185,8 +185,9 @@ async def ingest_files(
 
     for filename, content in files:
         result.pages_crawled += 1
+        safe_suffix = Path(filename).suffix or ".tmp"
         with tempfile.NamedTemporaryFile(
-            suffix=f"_{filename}", delete=False
+            suffix=safe_suffix, delete=False
         ) as tmp:
             tmp.write(content)
             tmp_path = Path(tmp.name)
@@ -220,3 +221,49 @@ async def ingest_files(
 
     await flush()
     return result
+
+
+SUPPORTED_EXTS = {".html", ".htm", ".md", ".txt", ".pdf"}
+
+
+async def ingest_folder(
+    db: Database,
+    name: str,
+    folder_path: str,
+    recursive: bool = True,
+) -> IngestResult:
+    root = Path(folder_path).expanduser().resolve()
+    if not root.is_dir():
+        return IngestResult(
+            source_id=f"{name}@latest",
+            pages_crawled=0,
+            pages_indexed=0,
+            chunks_indexed=0,
+            errors=1,
+        )
+
+    files: list[tuple[str, bytes]] = []
+    seen_inodes: set[int] = set()
+    iterator = root.rglob("*") if recursive else root.iterdir()
+    for p in sorted(iterator):
+        if p.name.startswith("."):
+            continue
+        if not p.is_file():
+            continue
+        try:
+            inode = p.stat().st_ino
+            if inode in seen_inodes:
+                continue
+            seen_inodes.add(inode)
+        except OSError:
+            continue
+        if p.suffix.lower() not in SUPPORTED_EXTS:
+            continue
+        try:
+            content = p.read_bytes()
+        except OSError:
+            continue
+        rel = str(p.relative_to(root))
+        files.append((rel, content))
+
+    return await ingest_files(db, name=name, files=files)

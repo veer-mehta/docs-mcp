@@ -12,7 +12,7 @@ from starlette.routing import Route
 from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.jobs import JOBS, submit_ingest
-from docs_mcp.pipeline import ingest_documentation, ingest_files
+from docs_mcp.pipeline import ingest_documentation, ingest_files, ingest_folder
 from docs_mcp.storage.db import Database, source_pattern
 from docs_mcp.llm import generate_llm_response
 from docs_mcp.chat import handle_chat, start_ingest
@@ -219,6 +219,20 @@ async def upload(request):
     return JSONResponse(asdict(result))
 
 
+async def upload_folder(request):
+    try:
+        payload = await request.json()
+    except ValueError:
+        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+    path = payload.get("path")
+    if not path:
+        return JSONResponse({"error": "missing required field: path"}, status_code=400)
+    name = payload.get("name", "uploaded-docs")
+    recursive = bool(payload.get("recursive", True))
+    result = await ingest_folder(db, name=name, folder_path=path, recursive=recursive)
+    return JSONResponse(asdict(result))
+
+
 routes = [
     Route("/", index, methods=["GET"]),
     Route("/search", search, methods=["GET"]),
@@ -226,6 +240,7 @@ routes = [
     Route("/sources/{source_id}", delete_source, methods=["DELETE"]),
     Route("/ingest", ingest, methods=["POST"]),
     Route("/upload", upload, methods=["POST"]),
+    Route("/upload-folder", upload_folder, methods=["POST"]),
     Route("/jobs", list_jobs, methods=["GET"]),
     Route("/jobs/{job_id}", get_job, methods=["GET"]),
     Route("/llm-chat", llm_chat, methods=["GET"]),

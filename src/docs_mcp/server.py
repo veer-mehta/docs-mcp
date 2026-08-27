@@ -6,7 +6,7 @@ from mcp.server.mcpserver import MCPServer
 
 from docs_mcp.config import settings
 from docs_mcp.jobs import JOBS, submit_ingest
-from docs_mcp.pipeline import ingest_documentation
+from docs_mcp.pipeline import ingest_documentation, ingest_folder
 from docs_mcp.storage.db import Database, source_pattern
 
 logger = logging.getLogger(__name__)
@@ -149,6 +149,37 @@ async def list_sources() -> str:
             f"(updated {updated})"
         )
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def add_local_docs(
+    name: str,
+    path: str,
+    recursive: bool = True,
+) -> str:
+    """Index local documentation files from a folder on disk.
+
+    Walks the folder, finds supported files (HTML, Markdown, PDF, TXT),
+    extracts text, chunks, embeds, and stores them for semantic search.
+
+    Args:
+        name: Short identifier for this collection, e.g. "internal-api".
+        path: Absolute or relative path to the folder on the server.
+        recursive: If true, descend into subdirectories (default true).
+    """
+    from pathlib import Path
+
+    resolved = Path(path).expanduser().resolve()
+    if not resolved.is_dir():
+        return f"Not a directory: {path}"
+    result = await ingest_folder(db, name=name, folder_path=str(resolved), recursive=recursive)
+    return json.dumps({
+        "source_id": result.source_id,
+        "files_indexed": result.pages_indexed,
+        "chunks_indexed": result.chunks_indexed,
+        "errors": result.errors,
+        "note": f"Search with search_documentation(name=\"{name}\").",
+    })
 
 
 def main() -> None:
