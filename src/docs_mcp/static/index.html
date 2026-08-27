@@ -30,11 +30,11 @@
   .rank, .count, .crumb, .tbl, .hint, .srcs strong, .content, input, select, textarea,
   details summary { font-family: var(--mono); }
 
-  header { margin-bottom: 44px; }
-  header h1 { font: 500 34px/1.2 var(--serif); letter-spacing: -.4px; }
+  header { margin-bottom: 36px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  header h1 { font: 500 34px/1.2 var(--serif); letter-spacing: -.4px; margin: 0; }
   header p { color: var(--muted); font-size: 17px; margin-top: 8px; font-style: italic; }
 
-  .tabs { display: flex; gap: 4px; margin-bottom: 36px; }
+  .tabs { display: flex; gap: 4px; }
   .tabs button {
     background: none; border: none; color: var(--dim); cursor: pointer;
     padding: 7px 14px; font-size: 13px; border-radius: 6px; transition: all .12s;
@@ -58,13 +58,25 @@
   .row { display: flex; gap: 10px; flex-wrap: wrap; }
   .row > * { flex: 1; min-width: 110px; }
 
-  .btn {
-    background: var(--text); color: var(--bg); border: 0; border-radius: 8px;
-    padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: opacity .12s;
-  }
-  .btn:hover { opacity: .85; }
-  .btn:disabled { opacity: .3; cursor: wait; }
+.btn {
+     background: var(--text); color: var(--bg); border: 0; border-radius: 8px;
+     padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+     transition: opacity .12s;
+   }
+   .btn:hover { opacity: .85; }
+   .btn:disabled { opacity: .3; cursor: wait; }
+
+   /* icon-only circular buttons (chat send, search submit) */
+   .btn-icon {
+     width: 36px; height: 36px; border-radius: 50%;
+     background: var(--text); color: var(--bg); border: 0;
+     cursor: pointer; font-size: 0; line-height: 0;
+     display: inline-flex; align-items: center; justify-content: center;
+     transition: opacity .12s; flex-shrink: 0;
+   }
+   .btn-icon svg { width: 16px; height: 16px; }
+   .btn-icon:hover { opacity: .85; }
+   .btn-icon:disabled { opacity: .3; cursor: wait; }
   .btn-ghost {
     background: none; color: var(--muted); border: 1px solid var(--border);
     padding: 5px 11px; font-size: 11.5px; border-radius: 6px; cursor: pointer;
@@ -121,7 +133,7 @@
     font-family: var(--serif); resize: none; max-height: 180px; line-height: 1.5;
   }
   .chat-input textarea:focus { outline: none; }
-  .chat-input .btn { padding: 8px 16px; }
+  .chat-input .btn-icon { width: 36px; height: 36px; flex-shrink: 0; }
 
   .srcs { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 15px; }
   .srcs strong { display: block; color: var(--dim); text-transform: uppercase; letter-spacing: .7px; font-size: 10.5px; margin-bottom: 8px; }
@@ -196,6 +208,17 @@
   .about-refresh .btn-ghost { font-size: 11px; }
   .about-updated { font-family: var(--mono); font-size: 11px; color: var(--dim); }
 
+  .about-card {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .about-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .about-row:last-child { border-bottom: 0; }
+  .about-label { color: var(--dim); font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
+  .about-value { color: var(--text); font-family: var(--mono); font-size: 14px; }
+
   .src-badge {
     display: inline-block; font-family: var(--mono); font-size: 10.5px;
     padding: 2px 7px; border-radius: 4px; background: var(--surface2);
@@ -255,22 +278,23 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>fathom</h1>
+<header>
+    <h1>fathom-mcp</h1>
+    <div class="tabs">
+      <button id="tabChat" class="on" type="button">chat</button>
+      <button id="tabRag" type="button">search & sources</button>
+      <button id="tabAbout" type="button">about</button>
+    </div>
   </header>
-
-  <div class="tabs">
-    <button id="tabChat" class="on" type="button">chat</button>
-    <button id="tabRag" type="button">search &amp; sources</button>
-    <button id="tabAbout" type="button">about</button>
-  </div>
 
   <!-- ============ chat ============ -->
   <section id="viewChat" class="view on">
     <div id="chatLog"></div>
     <div class="chat-input">
       <textarea id="chatQ" rows="1" placeholder="ask anything…" autofocus></textarea>
-      <button id="chatSend" class="btn">send</button>
+      <button id="chatSend" class="btn-icon" aria-label="send" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
     </div>
     <div class="status">retrieval in-process · answers by the LLM in <code>.env</code></div>
   </section>
@@ -281,7 +305,9 @@
       <div class="section-label">search</div>
       <div class="row">
         <input id="q" placeholder="e.g. how do I define a model with validated fields">
-        <button class="btn">search</button>
+        <button class="btn-icon" aria-label="search" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
       </div>
       <div class="modes">
         <input type="radio" name="mode" id="mHybrid" value="hybrid" checked><label for="mHybrid">hybrid</label>
@@ -383,9 +409,40 @@
       <button class="btn-ghost" id="aboutRefresh" type="button">refresh</button>
     </div>
     <div class="section-label">system</div>
-    <table class="tbl" id="aboutTable">
-      <tbody><tr><td colspan="2" class="empty">loading…</td></tr></tbody>
-    </table>
+    <div class="about-card" id="aboutCard">
+      <div class="about-row">
+        <span class="about-label">Embedding Model</span>
+        <span class="about-value" id="aboutEmbeddingModel">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">Embedding Dims</span>
+        <span class="about-value" id="aboutEmbeddingDims">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">LLM Model</span>
+        <span class="about-value" id="aboutLlmModel">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">Python Version</span>
+        <span class="about-value" id="aboutPython">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">Database</span>
+        <span class="about-value" id="aboutDatabase">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">Indexed Sources</span>
+        <span class="about-value" id="aboutSources">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">Total Pages</span>
+        <span class="about-value" id="aboutPages">—</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">Total Chunks</span>
+        <span class="about-value" id="aboutChunks">—</span>
+      </div>
+    </div>
 
     <hr class="divider">
 
@@ -905,24 +962,21 @@ async function loadAbout() {
   try {
     const res = await fetch("/about");
     const d = await res.json();
-    $("aboutTable").innerHTML = [
-      ["version", d.version],
-      ["python", d.python],
-      ["embedding model", d.embedding_model],
-      ["embedding dims", d.embedding_dims],
-      ["llm model", d.llm_model],
-      ["database", d.database],
-      ["indexed sources", d.sources],
-      ["total pages", d.pages],
-      ["total chunks", d.chunks],
-      ["crawl depth", d.max_depth],
-      ["max pages/crawl", d.max_pages],
-    ].map(([k, v]) => `<tr><td style="color:var(--dim)">${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join("");
+    const set = (id, v) => { const el = $(id); if (el) el.textContent = v == null ? "—" : String(v); };
+    set("aboutEmbeddingModel", d.embedding_model);
+    set("aboutEmbeddingDims", d.embedding_dims);
+    set("aboutLlmModel", d.llm_model);
+    set("aboutPython", d.python);
+    set("aboutDatabase", d.database);
+    set("aboutSources", d.sources);
+    set("aboutPages", d.pages);
+    set("aboutChunks", d.chunks);
     const ts = Date.now();
     $("aboutUpdated").textContent = "updated " + aboutTimeAgo(ts);
     $("aboutUpdated").dataset.ts = ts;
   } catch {
-    $("aboutTable").innerHTML = `<tr><td colspan="2" class="empty">failed to load</td></tr>`;
+    const els = ["aboutEmbeddingModel","aboutEmbeddingDims","aboutLlmModel","aboutPython","aboutDatabase","aboutSources","aboutPages","aboutChunks"];
+    els.forEach(id => { const el = $(id); if (el) el.textContent = "failed to load"; });
   }
 }
 
