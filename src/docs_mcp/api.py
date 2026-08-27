@@ -103,6 +103,7 @@ async def search(request):
     provider = get_embedding_provider()
     vectors = await provider.embed([query])
     k = int(request.query_params.get("k", 5))
+    min_sim = float(request.query_params.get("min_sim", 0.35))
     try:
         hits = await db.search(
             vectors[0],
@@ -112,6 +113,7 @@ async def search(request):
             ),
             k=max(1, min(k, 20)),
             mode=mode,
+            min_similarity=min_sim,
         )
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)

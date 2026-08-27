@@ -171,16 +171,22 @@ class Database:
         self, query_text: str, pattern: str | None, n: int
     ) -> list[asyncpg.Record]:
         pool = await self.pool()
+        terms = [t for t in query_text.split() if len(t) > 2]
+        if len(terms) < 2:
+            return []
+        or_expr = " | ".join(terms)
         return await pool.fetch(
             f"SELECT id, url, title, heading_path, content, source_id, "
             f"ts_rank_cd(to_tsvector('english', content), "
-            f"websearch_to_tsquery('english', $1)) AS bm25_score "
+            f"to_tsquery('english', $1), 32) AS bm25_score "
             f"FROM {self._table} "
             f"WHERE ($2::text IS NULL OR source_id LIKE $2) "
             f"AND to_tsvector('english', content) "
-            f"@@ websearch_to_tsquery('english', $1) "
+            f"@@ to_tsquery('english', $1) "
+            f"AND ts_rank_cd(to_tsvector('english', content), "
+            f"to_tsquery('english', $1), 32) > 0.01 "
             f"ORDER BY bm25_score DESC LIMIT $3",
-            query_text,
+            or_expr,
             pattern,
             n,
         )
@@ -205,6 +211,7 @@ class Database:
         pattern: str | None = None,
         k: int = 5,
         mode: str = "hybrid",
+        min_similarity: float = -1.0,
     ) -> list[SearchHit]:
         if mode not in ("hybrid", "vector", "keyword"):
             raise ValueError(f"unknown search mode: {mode}")
@@ -257,6 +264,7 @@ class Database:
                 bm25_score=bm25,
             )
             for _, sim, bm25, rep in ranked
+            if sim is None or sim >= min_similarity
         ]
 
     async def list_sources(self) -> list[dict]:
