@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     )
 
     database_url: str = "postgresql://docs_mcp:docs_mcp@localhost:5432/docs_mcp"
+    embedding_provider: str = "local"
+    embedding_api_key: str | None = None
+    embedding_base_url: str = ""
+    embedding_model: str = ""
+    embedding_dims: int = 1024
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     local_embedding_max_tokens: int = 1024
     local_embedding_device: str = "auto"

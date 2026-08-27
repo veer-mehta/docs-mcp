@@ -67,4 +67,4 @@ Add to `~/.config/opencode/opencode.jsonc`:
 
 ## Config
 
-`~/.fathom-mcp/.env` — `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `DATABASE_URL`.
+`~/.fathom-mcp/.env` — set `EMBEDDING_PROVIDER=api` + `EMBEDDING_API_KEY` for remote embeddings (Jina, OpenAI, etc.), or leave as `local` for HuggingFace.
