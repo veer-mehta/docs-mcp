@@ -188,6 +188,26 @@
 
   .empty { color: var(--dim); text-align: center; padding: 32px 0; font-size: 15px; font-style: italic; }
 
+  /* ---------- upload zone ---------- */
+  .upload-zone {
+    border: 1px dashed var(--border2); border-radius: 10px;
+    padding: 28px 20px; text-align: center; cursor: pointer;
+    transition: border-color .12s, background .12s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--dim); background: var(--surface2); }
+  .upload-zone p { color: var(--muted); font-size: 14px; margin: 0; }
+  .upload-zone .hint { margin-top: 8px; }
+  .upload-files { margin-top: 12px; }
+  .upload-file {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; background: var(--surface); border-radius: 6px;
+    font-size: 13px; margin-bottom: 4px;
+  }
+  .upload-file .fname { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
+  .upload-file .fsize { color: var(--dim); font-size: 11px; }
+  .upload-file .fremove { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 13px; padding: 0 4px; }
+  .upload-file .fremove:hover { color: var(--red); }
+
   details summary {
     cursor: pointer; color: var(--muted); font-size: 12px; user-select: none;
     list-style: none; display: flex; align-items: center; gap: 7px;
@@ -299,6 +319,27 @@
       </form>
       <div id="ingestStatus" class="status"></div>
       <div class="bar" id="ingestBar" hidden><i style="width:0"></i></div>
+    </details>
+
+    <hr class="divider">
+
+    <details open>
+      <summary>upload files</summary>
+      <div style="margin-top:16px">
+        <div class="row" style="margin-bottom:12px">
+          <div style="flex:2"><label>source name</label><input id="uploadName" placeholder="uploaded-docs" value="uploaded-docs"></div>
+        </div>
+        <div class="upload-zone" id="uploadZone">
+          <p>drop files here or click to browse</p>
+          <div class="hint">HTML, Markdown, PDF, TXT</div>
+          <input type="file" id="uploadInput" multiple accept=".html,.htm,.md,.txt,.pdf" hidden>
+        </div>
+        <div class="upload-files" id="uploadFiles"></div>
+        <div style="margin-top:12px; display:flex; align-items:center; gap:14px">
+          <button class="btn" id="uploadBtn" disabled>upload &amp; index</button>
+          <span id="uploadStatus" class="status"></span>
+        </div>
+      </div>
     </details>
   </section>
 </div>
@@ -678,6 +719,73 @@ async function doIngest(ev) {
 
 $("searchForm").addEventListener("submit", doSearch);
 $("ingestForm").addEventListener("submit", doIngest);
+
+/* ---------- file upload ---------- */
+let uploadQueue = [];
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function renderUploadQueue() {
+  const el = $("uploadFiles");
+  if (!uploadQueue.length) { el.innerHTML = ""; $("uploadBtn").disabled = true; return; }
+  el.innerHTML = uploadQueue.map((f, i) =>
+    `<div class="upload-file"><span class="fname">${esc(f.name)}</span><span class="fsize">${formatSize(f.size)}</span><button class="fremove" data-idx="${i}">&times;</button></div>`
+  ).join("");
+  $("uploadBtn").disabled = false;
+}
+
+$("uploadZone").addEventListener("click", () => $("uploadInput").click());
+$("uploadInput").addEventListener("change", (e) => {
+  uploadQueue.push(...Array.from(e.target.files));
+  e.target.value = "";
+  renderUploadQueue();
+});
+
+$("uploadZone").addEventListener("dragover", (e) => { e.preventDefault(); $("uploadZone").classList.add("drag"); });
+$("uploadZone").addEventListener("dragleave", () => $("uploadZone").classList.remove("drag"));
+$("uploadZone").addEventListener("drop", (e) => {
+  e.preventDefault();
+  $("uploadZone").classList.remove("drag");
+  uploadQueue.push(...Array.from(e.dataTransfer.files));
+  renderUploadQueue();
+});
+
+$("uploadFiles").addEventListener("click", (e) => {
+  const btn = e.target.closest(".fremove");
+  if (!btn) return;
+  uploadQueue.splice(parseInt(btn.dataset.idx), 1);
+  renderUploadQueue();
+});
+
+$("uploadBtn").addEventListener("click", async () => {
+  if (!uploadQueue.length) return;
+  const btn = $("uploadBtn");
+  const status = $("uploadStatus");
+  btn.disabled = true;
+  status.className = "status";
+  status.textContent = "uploading…";
+  try {
+    const fd = new FormData();
+    fd.append("name", $("uploadName").value.trim() || "uploaded-docs");
+    uploadQueue.forEach(f => fd.append("files", f));
+    const res = await fetch("/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
+    status.className = "status ok";
+    status.textContent = `done — ${data.pages_indexed} file(s), ${data.chunks_indexed} chunks` + (data.errors ? ` · ${data.errors} error(s)` : "");
+    uploadQueue = [];
+    renderUploadQueue();
+    loadSources();
+  } catch (err) {
+    status.className = "status err";
+    status.textContent = "error: " + err.message;
+    btn.disabled = false;
+  }
+});
 
 loadChat();
 if (!$("chatLog").querySelectorAll(".msg").length) {

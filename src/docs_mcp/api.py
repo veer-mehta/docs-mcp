@@ -12,7 +12,7 @@ from starlette.routing import Route
 from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.jobs import JOBS, submit_ingest
-from docs_mcp.pipeline import ingest_documentation
+from docs_mcp.pipeline import ingest_documentation, ingest_files
 from docs_mcp.storage.db import Database, source_pattern
 from docs_mcp.llm import generate_llm_response
 from docs_mcp.chat import handle_chat, start_ingest
@@ -197,12 +197,35 @@ async def chat_ingest(request):
     return JSONResponse(result)
 
 
+async def upload(request):
+    try:
+        form = await request.form()
+    except Exception:
+        return JSONResponse({"error": "invalid form data"}, status_code=400)
+    name = form.get("name", "uploaded-docs")
+    files: list[tuple[str, bytes]] = []
+    for key in form:
+        if key == "name":
+            continue
+        upload_file = form[key]
+        if hasattr(upload_file, "read"):
+            content = await upload_file.read()
+            filename = getattr(upload_file, "filename", key) or key
+            if content:
+                files.append((filename, content))
+    if not files:
+        return JSONResponse({"error": "no files provided"}, status_code=400)
+    result = await ingest_files(db, name=name, files=files)
+    return JSONResponse(asdict(result))
+
+
 routes = [
     Route("/", index, methods=["GET"]),
     Route("/search", search, methods=["GET"]),
     Route("/sources", sources, methods=["GET"]),
     Route("/sources/{source_id}", delete_source, methods=["DELETE"]),
     Route("/ingest", ingest, methods=["POST"]),
+    Route("/upload", upload, methods=["POST"]),
     Route("/jobs", list_jobs, methods=["GET"]),
     Route("/jobs/{job_id}", get_job, methods=["GET"]),
     Route("/llm-chat", llm_chat, methods=["GET"]),

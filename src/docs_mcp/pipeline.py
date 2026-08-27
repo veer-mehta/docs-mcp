@@ -6,11 +6,12 @@ import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.processing.chunker import chunk_markdown
-from docs_mcp.processing.extract import html_to_markdown
+from docs_mcp.processing.extract import html_to_markdown, file_to_markdown
 from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
@@ -151,3 +152,71 @@ async def ingest_documentation(
             result.pages_removed = await db.delete_stale_pages(source_id, seen_urls)
 
     return asdict(result)
+
+
+async def ingest_files(
+    db: Database,
+    name: str,
+    files: list[tuple[str, bytes]],
+) -> IngestResult:
+    source_id = f"{name}@latest"
+    provider = get_embedding_provider()
+    await db.ensure_schema(provider.dimensions)
+
+    result = IngestResult(
+        source_id=source_id,
+        pages_crawled=0,
+        pages_indexed=0,
+        chunks_indexed=0,
+        errors=0,
+    )
+    pending: list[dict] = []
+
+    async def flush() -> None:
+        nonlocal pending
+        if not pending:
+            return
+        vectors = await provider.embed([row["content"] for row in pending])
+        for row, vector in zip(pending, vectors):
+            row["embedding"] = vector
+        await db.upsert_chunks(pending)
+        result.chunks_indexed += len(pending)
+        pending = []
+
+    for filename, content in files:
+        result.pages_crawled += 1
+        with tempfile.NamedTemporaryFile(
+            suffix=f"_{filename}", delete=False
+        ) as tmp:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+        try:
+            markdown = file_to_markdown(tmp_path, filename)
+            if not markdown:
+                result.errors += 1
+                continue
+            chunks = chunk_markdown(markdown)
+            url = f"file:///{filename}"
+            page_hash = content_hash(markdown)
+            for index, chunk in enumerate(chunks):
+                pending.append(
+                    {
+                        "source_id": source_id,
+                        "url": url,
+                        "title": filename,
+                        "content": chunk.content,
+                        "heading_path": chunk.heading_path,
+                        "chunk_index": index,
+                        "provider": provider.name,
+                        "metadata": {},
+                        "content_hash": page_hash,
+                    }
+                )
+            result.pages_indexed += 1
+            if len(pending) >= EMBED_BATCH_SIZE:
+                await flush()
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    await flush()
+    return result
