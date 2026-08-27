@@ -5,44 +5,53 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>docs-rag</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #000; --surface: #111; --surface2: #191919;
     --border: #222; --border2: #333;
-    --text: #ececec; --muted: #888; --dim: #555;
+    --text: #ececec; --muted: #8b8b8b; --dim: #5a5a5a;
     --green: #4ade80; --red: #f87171;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; margin: 0; }
   body {
     background: var(--bg); color: var(--text);
-    font: 14px/1.6 -apple-system, "Inter", "Segoe UI", system-ui, sans-serif;
+    font: 400 18px/1.7 var(--serif);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 100px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 64px 24px 120px; }
 
-  header { margin-bottom: 36px; }
-  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -.3px; }
-  header p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  /* machine chrome speaks mono; prose speaks serif */
+  .mono, label, .section-label, .status, .tabs button, .btn, .btn-ghost,
+  .rank, .count, .crumb, .tbl, .hint, .srcs strong, .content, input, select, textarea,
+  details summary { font-family: var(--mono); }
 
-  .tabs { display: flex; gap: 2px; margin-bottom: 32px; }
+  header { margin-bottom: 44px; }
+  header h1 { font: 500 34px/1.2 var(--serif); letter-spacing: -.4px; }
+  header p { color: var(--muted); font-size: 17px; margin-top: 8px; font-style: italic; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 36px; }
   .tabs button {
     background: none; border: none; color: var(--dim); cursor: pointer;
-    padding: 8px 16px; font-size: 13px; font-weight: 500; border-radius: 6px;
-    transition: all .12s;
+    padding: 7px 14px; font-size: 13px; border-radius: 6px; transition: all .12s;
   }
   .tabs button:hover { color: var(--muted); background: var(--surface); }
   .tabs button.on { color: var(--text); background: var(--surface); }
   .view { display: none; }
   .view.on { display: block; }
 
-  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 500; }
-  input, select {
-    width: 100%; padding: 9px 12px; border-radius: 8px; color: var(--text);
-    background: var(--surface); border: 1px solid var(--border); font-size: 13.5px;
+  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .7px; }
+  input, select, textarea {
+    width: 100%; padding: 10px 12px; border-radius: 8px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); font-size: 14px;
     transition: border-color .12s;
   }
-  input::placeholder { color: var(--dim); }
-  input:focus, select:focus { outline: none; border-color: var(--text); }
+  input::placeholder, textarea::placeholder { color: var(--dim); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--border2); }
   select { cursor: pointer; }
   input[type="checkbox"] { width: auto; accent-color: var(--text); }
 
@@ -51,118 +60,161 @@
 
   .btn {
     background: var(--text); color: var(--bg); border: 0; border-radius: 8px;
-    padding: 9px 20px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
     transition: opacity .12s;
   }
   .btn:hover { opacity: .85; }
   .btn:disabled { opacity: .3; cursor: wait; }
   .btn-ghost {
     background: none; color: var(--muted); border: 1px solid var(--border);
-    padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer;
+    padding: 5px 11px; font-size: 11.5px; border-radius: 6px; cursor: pointer;
     transition: all .12s;
   }
   .btn-ghost:hover { color: var(--red); border-color: var(--red); }
 
-  .divider { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
-  .section-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .8px; font-weight: 600; margin-bottom: 14px; }
+  /* focus is visible everywhere, but only for keyboard users */
+  :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 4px; }
 
-  #chatLog {
-    display: flex; flex-direction: column; gap: 6px;
-    min-height: 300px; max-height: 520px; overflow-y: auto;
-    padding: 4px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-  }
-  .msg {
-    max-width: 80%; padding: 10px 15px; border-radius: 14px; font-size: 13.5px;
-    animation: fadeUp .15s ease;
-  }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } }
+  .divider { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+  .section-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .9px; margin-bottom: 16px; }
+
+  /* ---------- chat: reads as a document, not a scrolling island ---------- */
+  #chatLog { display: flex; flex-direction: column; gap: 18px; min-height: 240px; }
+  .msg { max-width: 100%; animation: fadeUp .15s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } }
   .msg.user {
-    align-self: flex-end; background: var(--text); color: var(--bg);
-    border-bottom-right-radius: 4px; white-space: pre-wrap; font-weight: 500;
+    align-self: flex-end; max-width: 82%; background: var(--surface2);
+    border: 1px solid var(--border2); border-radius: 14px 14px 4px 14px;
+    padding: 10px 16px; white-space: pre-wrap;
   }
-  .msg.bot {
-    align-self: flex-start; background: var(--surface); border: 1px solid var(--border);
-    border-bottom-left-radius: 4px; line-height: 1.65;
-  }
-  .msg.bot.err { color: var(--red); border-color: rgba(248,113,113,.2); }
-  .msg.bot p { margin: 0 0 8px; }
-  .msg.bot p:last-child { margin-bottom: 0; }
-  .msg.bot ul, .msg.bot ol { margin: 4px 0 8px 20px; }
-  .msg.bot li { margin-bottom: 2px; }
+  .msg.bot { align-self: stretch; }
+  .msg.bot.err { background: rgba(248,113,113,.07); padding: 12px 16px; border-radius: 10px; }
+  .msg.bot.err .err-body { font-family: var(--mono); font-size: 13px; color: var(--red); }
+  .msg.bot p { margin: 0 0 12px; }
+  .msg.bot > :last-child { margin-bottom: 0; }
+  .msg.bot ul, .msg.bot ol { margin: 8px 0 12px 22px; }
+  .msg.bot li { margin-bottom: 4px; }
   .msg.bot strong { color: #fff; font-weight: 600; }
   .msg.bot em { color: var(--muted); }
-  .msg.bot code { background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; font-family: 'SF Mono', 'Fira Code', monospace; }
-  .msg.bot pre { background: var(--bg); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
-  .msg.bot pre code { background: none; padding: 0; font-size: 12px; }
-  .msg.bot blockquote { border-left: 2px solid var(--border2); padding-left: 12px; margin: 8px 0; color: var(--muted); }
-  .msg.bot h1, .msg.bot h2, .msg.bot h3 { font-size: 14px; font-weight: 600; margin: 12px 0 6px; }
+  .msg.bot a { text-decoration: underline; text-decoration-color: var(--border2); }
+  .msg.bot code { font-family: var(--mono); background: rgba(255,255,255,.06); padding: 2px 6px; border-radius: 4px; font-size: 13.5px; }
+  .msg.bot pre { background: var(--surface); border: 1px solid var(--border); padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+  .msg.bot pre code { background: none; padding: 0; font-size: 13px; line-height: 1.6; }
+  .msg.bot blockquote { border-left: 2px solid var(--border2); padding-left: 14px; margin: 12px 0; color: var(--muted); font-style: italic; }
+  .msg.bot h1, .msg.bot h2, .msg.bot h3 { font: 500 21px/1.35 var(--serif); margin: 20px 0 8px; }
   .msg.bot h1:first-child, .msg.bot h2:first-child, .msg.bot h3:first-child { margin-top: 0; }
+  .msg.bot table { border-collapse: collapse; margin: 12px 0; font-size: 15px; }
+  .msg.bot th, .msg.bot td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+
+  .thinking { font-family: var(--mono); font-size: 13px; color: var(--dim); }
 
   .chat-input {
-    display: flex; gap: 8px; margin-top: 14px;
+    position: sticky; bottom: 16px; z-index: 5;
+    display: flex; gap: 10px; align-items: flex-end; margin-top: 28px;
     padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
     border-radius: 12px; transition: border-color .12s;
+    box-shadow: 0 6px 24px rgba(0,0,0,.7);
   }
   .chat-input:focus-within { border-color: var(--border2); }
-  .chat-input input { border: 0; background: none; padding: 0; flex: 1; font-size: 14px; }
-  .chat-input input:focus { outline: none; border: none; }
-  .chat-input .btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; }
+  .chat-input textarea {
+    border: 0; background: none; padding: 4px 0; flex: 1; font-size: 15px;
+    font-family: var(--serif); resize: none; max-height: 180px; line-height: 1.5;
+  }
+  .chat-input textarea:focus { outline: none; }
+  .chat-input .btn { padding: 8px 16px; }
 
-  .srcs { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.7; }
-  .srcs strong { color: var(--dim); text-transform: uppercase; letter-spacing: .4px; font-size: 10.5px; }
-  .srcs a { color: var(--text); text-decoration: none; }
+  .srcs { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 15px; }
+  .srcs strong { display: block; color: var(--dim); text-transform: uppercase; letter-spacing: .7px; font-size: 10.5px; margin-bottom: 8px; }
+  .srcs ol { margin: 0; padding-left: 22px; color: var(--muted); }
+  .srcs li { margin-bottom: 4px; }
+  .srcs a { text-decoration: none; }
   .srcs a:hover { text-decoration: underline; }
+  .srcs details { margin-top: 3px; }
+  .srcs details summary { font-size: 11px; color: var(--dim); }
+  .srcs .chunk-peek {
+    font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--muted);
+    white-space: pre-wrap; margin-top: 6px; padding: 8px 10px;
+    background: var(--surface); border-radius: 6px; max-height: 220px; overflow-y: auto;
+  }
 
-  .status { font-size: 12px; margin-top: 8px; color: var(--dim); min-height: 16px; }
+  .status { font-size: 12.5px; margin-top: 10px; color: var(--dim); min-height: 17px; }
   .status.ok { color: var(--green); }
   .status.err { color: var(--red); }
 
-  .hit { padding: 14px 0; border-bottom: 1px solid var(--border); }
-  .hit:last-child { border-bottom: 0; }
-  .hit-head { display: flex; align-items: center; gap: 10px; }
-  .score {
-    background: var(--surface2); color: var(--muted);
-    font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 600;
-    font-variant-numeric: tabular-nums; border: 1px solid var(--border);
-  }
+  .bar { height: 2px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--text); transition: width .3s ease; }
+
+  /* ---------- search results ---------- */
   a { color: var(--text); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  .crumb { color: var(--dim); font-size: 11.5px; margin-top: 3px; }
+
+  .hit { padding: 20px 0; border-bottom: 1px solid var(--border); }
+  .hit:last-child { border-bottom: 0; }
+  .hit.sel { background: linear-gradient(90deg, var(--surface2), transparent 80%); }
+  .hit.sel .rank { color: var(--text); }
+  .hit-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .hit-head a { font: 500 20px/1.35 var(--serif); }
+  .rank { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .count { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
+  .chunk { margin-top: 12px; }
+  .crumb { color: var(--dim); font-size: 11.5px; margin-bottom: 4px; }
+  .crumb span:not(:last-child)::after { content: " › "; color: var(--border2); }
   .content {
-    margin-top: 8px; white-space: pre-wrap; color: var(--muted);
-    font-size: 13px; max-height: 180px; overflow-y: auto;
-    padding-left: 12px; border-left: 1px solid var(--border);
-    line-height: 1.55;
+    white-space: pre-wrap; color: var(--muted); font-size: 13.5px; line-height: 1.6;
+    cursor: pointer;
+    display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
   }
+  .content.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
+
+  .modes { display: flex; gap: 0; margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }
+  .modes input { position: absolute; opacity: 0; pointer-events: none; }
+  .modes label {
+    margin: 0; padding: 7px 16px; font-size: 11.5px; color: var(--dim); cursor: pointer;
+    text-transform: uppercase; letter-spacing: .7px; transition: all .12s; border-right: 1px solid var(--border);
+  }
+  .modes label:last-of-type { border-right: 0; }
+  .modes input:checked + label { background: var(--surface2); color: var(--text); }
+  .modes input:focus-visible + label { outline: 2px solid var(--text); outline-offset: -2px; }
 
   .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   .tbl th {
     color: var(--dim); text-align: left; font-weight: 500; padding: 0 8px 10px;
-    font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .7px;
     border-bottom: 1px solid var(--border);
   }
-  .tbl td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: 11px 8px; border-bottom: 1px solid var(--border); }
   .tbl tr:last-child td { border-bottom: 0; }
   .tbl td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 
-  .empty { color: var(--dim); text-align: center; padding: 28px 0; font-size: 13px; }
+  .empty { color: var(--dim); text-align: center; padding: 32px 0; font-size: 15px; font-style: italic; }
 
   details summary {
-    cursor: pointer; color: var(--muted); font-size: 12.5px; user-select: none;
-    list-style: none; display: flex; align-items: center; gap: 6px;
+    cursor: pointer; color: var(--muted); font-size: 12px; user-select: none;
+    list-style: none; display: flex; align-items: center; gap: 7px;
   }
-  details summary::before { content: '+'; font-weight: 600; color: var(--dim); transition: transform .15s; }
+  details summary::before { content: '+'; color: var(--dim); transition: transform .15s; }
   details[open] summary::before { transform: rotate(45deg); }
   details summary::-webkit-details-marker { display: none; }
 
-  .hint { font-size: 11.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
-  .hint code { color: var(--muted); background: var(--surface); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .hint { font-size: 11.5px; color: var(--dim); margin-top: 10px; line-height: 1.6; }
+  .hint kbd {
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+    padding: 1px 5px; font-size: 11px; color: var(--muted);
+  }
 
-  @media (max-width: 600px) {
-    .wrap { padding: 24px 14px 80px; }
-    .msg { max-width: 90%; }
+  @media (max-width: 640px) {
+    body { font-size: 17px; }
+    .wrap { padding: 32px 16px 90px; }
+    header h1 { font-size: 27px; }
+    .msg.user { max-width: 92%; }
     .row { flex-direction: column; }
     .row > * { min-width: 100%; }
+    .tbl { font-size: 12px; }
+    .tbl th:nth-child(4), .tbl td:nth-child(4) { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
@@ -170,7 +222,6 @@
 <div class="wrap">
   <header>
     <h1>docs-rag</h1>
-    <p>semantic search over crawled documentation · answers from your LLM</p>
   </header>
 
   <div class="tabs">
@@ -182,10 +233,10 @@
   <section id="viewChat" class="view on">
     <div id="chatLog"></div>
     <div class="chat-input">
-      <input id="chatQ" placeholder="ask anything…" autofocus>
+      <textarea id="chatQ" rows="1" placeholder="ask anything…" autofocus></textarea>
       <button id="chatSend" class="btn">send</button>
     </div>
-    <div class="status">retrieval via MCP · answers by the LLM in <code>.env</code></div>
+    <div class="status">retrieval in-process · answers by the LLM in <code>.env</code></div>
   </section>
 
   <!-- ============ RAG ============ -->
@@ -196,26 +247,26 @@
         <input id="q" placeholder="e.g. how do I define a model with validated fields">
         <button class="btn">search</button>
       </div>
-      <details style="margin-top:10px">
-        <summary>advanced</summary>
-        <div class="row" style="margin-top:12px">
+      <div class="modes">
+        <input type="radio" name="mode" id="mHybrid" value="hybrid" checked><label for="mHybrid">hybrid</label>
+        <input type="radio" name="mode" id="mVector" value="vector"><label for="mVector">vector</label>
+        <input type="radio" name="mode" id="mKeyword" value="keyword"><label for="mKeyword">keyword</label>
+      </div>
+      <details style="margin-top:14px">
+        <summary>filters</summary>
+        <div class="row" style="margin-top:14px">
           <div><label>source</label><input id="fname" placeholder="pydantic"></div>
           <div><label>version</label><input id="fver" placeholder="2.13"></div>
           <div><label>limit</label><input id="fk" type="number" value="5" min="1" max="20"></div>
-          <div>
-            <label>mode</label>
-            <select id="fmode">
-              <option value="hybrid">hybrid</option>
-              <option value="vector">vector</option>
-              <option value="keyword">keyword</option>
-            </select>
-          </div>
         </div>
       </details>
       <div id="searchStatus" class="status"></div>
     </form>
 
     <div id="hits" style="margin-top: 6px;"></div>
+    <div id="navHint" class="hint" hidden>
+      <kbd>j</kbd> <kbd>k</kbd> move · <kbd>l</kbd> <kbd>h</kbd> expand/collapse · <kbd>g</kbd> <kbd>G</kbd> first/last · <kbd>enter</kbd> open
+    </div>
 
     <hr class="divider">
 
@@ -229,7 +280,7 @@
 
     <details>
       <summary>add documentation</summary>
-      <form id="ingestForm" style="margin-top:14px">
+      <form id="ingestForm" style="margin-top:16px">
         <div class="row">
           <div><label>name *</label><input id="iname" placeholder="pydantic" required></div>
           <div><label>version *</label><input id="iver" placeholder="2.13" required></div>
@@ -239,14 +290,15 @@
           <div><label>depth</label><input id="idepth" type="number" value="2" min="0" max="5"></div>
           <div><label>max pages</label><input id="ipages" type="number" value="30" min="1" max="300"></div>
         </div>
-        <div style="margin-top:14px; display:flex; align-items:center; gap:14px">
+        <div style="margin-top:16px; display:flex; align-items:center; gap:16px">
           <button class="btn">ingest</button>
-          <label style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; cursor:pointer">
+          <label style="display:flex; align-items:center; gap:7px; color:var(--muted); font-size:11.5px; cursor:pointer; margin:0; text-transform:none; letter-spacing:0">
             <input type="checkbox" id="iprune"> prune removed pages
           </label>
         </div>
       </form>
       <div id="ingestStatus" class="status"></div>
+      <div class="bar" id="ingestBar" hidden><i style="width:0"></i></div>
     </details>
   </section>
 </div>
@@ -259,6 +311,31 @@ function esc(s) {
     {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]
   ));
 }
+
+/* LLM answers become HTML via marked, which does not sanitize. Anything that
+   reaches innerHTML goes through here first, or a poisoned doc chunk gets
+   persisted to localStorage and re-executed on every load. */
+const OK_TAGS = /^(P|BR|HR|STRONG|B|EM|I|DEL|CODE|PRE|SPAN|DIV|UL|OL|LI|DL|DT|DD|BLOCKQUOTE|H1|H2|H3|H4|H5|H6|A|TABLE|THEAD|TBODY|TR|TH|TD|DETAILS|SUMMARY|OL)$/;
+const DROP_TAGS = /^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|FORM|SVG|MATH|NOSCRIPT|TEMPLATE|LINK|META|BASE)$/;
+const OK_ATTRS = { A: ["href"], SPAN: ["class"], DIV: ["class"], PRE: ["class"], CODE: ["class"], DETAILS: ["class"], SUMMARY: ["class"], OL: ["class"], LI: ["class"], STRONG: ["class"] };
+
+function clean(html) {
+  const t = document.createElement("template");
+  t.innerHTML = String(html ?? "");
+  for (const el of [...t.content.querySelectorAll("*")]) {
+    if (DROP_TAGS.test(el.tagName)) { el.remove(); continue; }
+    if (!OK_TAGS.test(el.tagName)) { el.replaceWith(...el.childNodes); continue; }
+    const allowed = OK_ATTRS[el.tagName] || [];
+    for (const attr of [...el.attributes]) {
+      if (!allowed.includes(attr.name)) { el.removeAttribute(attr.name); continue; }
+      if (attr.name === "href" && !/^(https?:|mailto:|#|\/)/i.test(attr.value.trim())) el.removeAttribute("href");
+    }
+    if (el.tagName === "A") { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); }
+  }
+  return t.innerHTML;
+}
+
+function setHTML(el, html) { el.innerHTML = clean(html); }
 
 /* ---------- view switching ---------- */
 function showView(tab) {
@@ -274,10 +351,12 @@ $("tabRag").addEventListener("click", () => showView("rag"));
 /* ---------- chat persistence ---------- */
 const CHAT_KEY = "docs_rag_chat";
 const CHAT_MAX = 50;
-const THINKING = '<span style="color:var(--dim)">thinking…</span>';
+const THINKING = '<span class="thinking">thinking…</span>';
+const GREETING = 'Ask anything about the indexed docs — try <code>"how do I install pydantic?"</code>';
+const isGreeting = (html) => String(html ?? "").startsWith("Ask anything about the indexed docs");
 
 function saveChat() {
-  const msgs = [...$("chatLog").querySelectorAll(".msg")].map(el => ({
+  const msgs = [...$("chatLog").querySelectorAll(".msg:not(.greet)")].map(el => ({
     cls: el.className.replace("msg ", "").replace(" err", ""),
     html: el.innerHTML,
     err: el.classList.contains("err"),
@@ -288,7 +367,7 @@ function saveChat() {
 function loadChat() {
   try {
     const msgs = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
-    msgs.filter(m => m.html !== THINKING).forEach(m => {
+    msgs.filter(m => m.html !== THINKING && !isGreeting(m.html)).forEach(m => {
       const div = addMsg(m.cls, m.html);
       if (m.err) div.classList.add("err");
     });
@@ -296,12 +375,15 @@ function loadChat() {
   } catch {}
 }
 
+function toBottom() {
+  window.scrollTo({ top: document.body.scrollHeight });
+}
+
 function addMsg(cls, html) {
   const div = document.createElement("div");
   div.className = "msg " + cls;
-  div.innerHTML = html;
+  setHTML(div, html);
   $("chatLog").appendChild(div);
-  $("chatLog").scrollTop = $("chatLog").scrollHeight;
   saveChat();
   return div;
 }
@@ -319,31 +401,53 @@ async function pollJob(jobId, render, interval) {
     const extra = [];
     if (r.pages_unchanged) extra.push(`${r.pages_unchanged} unchanged`);
     if (r.pages_removed) extra.push(`${r.pages_removed} removed`);
+    const pct = job.max_pages ? Math.min(100, Math.round((job.pages_crawled / job.max_pages) * 100)) : 0;
     if (job.status === "queued" || job.status === "running") {
-      render("status", `${job.status} — crawled ${job.pages_crawled}, indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks`);
+      render("status", `${job.status} — crawled ${job.pages_crawled}, indexed ${job.pages_indexed} pages, ${job.chunks_indexed} chunks`, pct);
     } else if (job.status === "done") {
-      render("ok", `done — ${r.pages_indexed}/${r.pages_crawled} pages, ${r.chunks_indexed} chunks` + (extra.length ? ` · ${extra.join(", ")}` : ""));
+      render("ok", `done — ${r.pages_indexed}/${r.pages_crawled} pages, ${r.chunks_indexed} chunks` + (extra.length ? ` · ${extra.join(", ")}` : ""), 100);
       loadSources();
       return;
     } else {
-      render("err", `failed: ${job.error || "unknown"}`);
+      render("err", `failed: ${job.error || "unknown"}`, pct);
       return;
     }
   }
 }
 
 /* ---------- chat ---------- */
-let pendingIngest = null; // {name, version} when bot asked for URL
+let pendingIngest = null;
+
+function autoGrow() {
+  const t = $("chatQ");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight, 180) + "px";
+}
+
+function sourcesBlock(sources) {
+  if (!sources || !sources.length) return "";
+  const items = sources.map(s => {
+    const peek = s.content
+      ? `<details><summary>chunk</summary><div class="chunk-peek">${esc(s.content)}</div></details>`
+      : "";
+    const path = (s.heading_path || []).length
+      ? `<div class="crumb">${s.heading_path.map(x => `<span>${esc(x)}</span>`).join("")}</div>`
+      : "";
+    return `<li><a href="${esc(s.url)}">${esc(s.title || s.url)}</a>${path}${peek}</li>`;
+  }).join("");
+  return `<div class="srcs"><strong>sources</strong><ol>${items}</ol></div>`;
+}
 
 async function sendChat() {
   const q = $("chatQ").value.trim();
   if (!q) return;
   $("chatQ").value = "";
+  autoGrow();
   addMsg("user", esc(q));
   const thinking = addMsg("bot", THINKING);
   $("chatSend").disabled = true;
+  toBottom();
   try {
-    // If bot asked for a URL and user typed one, start ingest directly
     if (pendingIngest && /^https?:\/\//.test(q)) {
       const res = await fetch("/chat/ingest", {
         method: "POST",
@@ -353,16 +457,19 @@ async function sendChat() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || res.status);
       pendingIngest = null;
-      thinking.innerHTML = marked.parse(data.answer);
       thinking.dataset.answer = data.answer;
+      setHTML(thinking, marked.parse(data.answer));
       saveChat();
+      toBottom();
       if (data.job_id) {
-        pollJob(data.job_id, (cls, text) => {
-          const base = marked.parse(thinking.dataset.answer || "");
+        pollJob(data.job_id, (cls, text, pct) => {
           const badge = cls === "status" ? "" : cls;
-          thinking.innerHTML = base + `<div class="status ${badge}" style="margin-top:10px">${esc(text)}</div>`;
+          setHTML(thinking,
+            marked.parse(thinking.dataset.answer || "") +
+            `<div class="status ${badge}">${esc(text)}</div>` +
+            `<div class="bar"><i style="width:${pct}%"></i></div>`);
           saveChat();
-          $("chatLog").scrollTop = $("chatLog").scrollHeight;
+          toBottom();
         }, 2000);
       }
       return;
@@ -371,23 +478,17 @@ async function sendChat() {
     const res = await fetch("/llm-chat?q=" + encodeURIComponent(q));
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.status);
-    const srcs = (data.sources || []).map(s =>
-      `<a href="${esc(s.url)}" target="_blank">${esc(s.title || s.url)}</a>`
-    ).join(" · ");
-    const answerHtml =
-      marked.parse(data.answer) +
-      (srcs ? `<div class="srcs"><strong>sources</strong><br>${srcs}</div>` : "");
-    thinking.innerHTML = answerHtml;
     thinking.dataset.answer = data.answer;
+    setHTML(thinking, marked.parse(data.answer) + sourcesBlock(data.sources));
     saveChat();
+    toBottom();
 
-    // Track pending ingest if bot is asking for a URL
     if (data.name && data.version && !data.job_id) {
       pendingIngest = {name: data.name, version: data.version};
     }
   } catch (err) {
     thinking.classList.add("err");
-    thinking.textContent = "error: " + err.message;
+    setHTML(thinking, `<span class="err-body">error: ${esc(err.message)}</span>`);
     saveChat();
   } finally {
     $("chatSend").disabled = false;
@@ -396,11 +497,47 @@ async function sendChat() {
 }
 
 $("chatSend").addEventListener("click", sendChat);
+$("chatQ").addEventListener("input", autoGrow);
 $("chatQ").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); sendChat(); }
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
 });
 
 /* ---------- RAG search ---------- */
+function selectedMode() {
+  return document.querySelector('input[name="mode"]:checked').value;
+}
+
+/* One page can match several chunks; group so near-duplicate cards collapse
+   into one result with its chunks listed under it. */
+function renderHits(hits) {
+  const groups = [];
+  const byUrl = new Map();
+  hits.forEach((h, i) => {
+    let g = byUrl.get(h.url);
+    if (!g) {
+      g = { url: h.url, title: h.title || h.url, rank: i + 1, chunks: [] };
+      byUrl.set(h.url, g);
+      groups.push(g);
+    }
+    g.chunks.push(h);
+  });
+  $("hits").innerHTML = groups.map(g => `
+    <article class="hit">
+      <div class="hit-head">
+        <span class="rank">#${g.rank}</span>
+        <a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a>
+        ${g.chunks.length > 1 ? `<span class="count">${g.chunks.length} chunks</span>` : ""}
+      </div>
+      ${g.chunks.map(c => `
+        <div class="chunk">
+          ${c.heading_path.length ? `<div class="crumb">${c.heading_path.map(s => `<span>${esc(s)}</span>`).join("")}</div>` : ""}
+          <div class="content">${esc(c.content)}</div>
+        </div>`).join("")}
+    </article>`).join("");
+  $("navHint").hidden = !groups.length;
+  sel = -1;
+}
+
 async function doSearch(ev) {
   ev.preventDefault();
   const q = $("q").value.trim();
@@ -409,32 +546,64 @@ async function doSearch(ev) {
   $("searchStatus").className = "status";
   $("hits").innerHTML = "";
   try {
-    const params = new URLSearchParams({
-      q, k: $("fk").value || 5, mode: $("fmode").value || "hybrid",
-    });
+    const params = new URLSearchParams({ q, k: $("fk").value || 5, mode: selectedMode() });
     if ($("fname").value.trim()) params.set("name", $("fname").value.trim());
     if ($("fver").value.trim()) params.set("version", $("fver").value.trim());
     const res = await fetch("/search?" + params);
     if (!res.ok) throw new Error((await res.json()).error || res.status);
     const data = await res.json();
-    $("searchStatus").textContent = data.hits.length ? `${data.hits.length} result(s)` : "no matches";
-    $("hits").innerHTML = data.hits.map(h => {
-      const score = h.similarity != null ? h.similarity.toFixed(2) : (h.bm25_score ?? 0).toFixed(4);
-      return `
-      <div class="hit">
-        <div class="hit-head">
-          <span class="score">${score}</span>
-          <a href="${esc(h.url)}" target="_blank">${esc(h.title || h.url)}</a>
-        </div>
-        ${h.heading_path.length ? `<div class="crumb">${esc(h.heading_path.join(" › "))}</div>` : ""}
-        <div class="content">${esc(h.content)}</div>
-      </div>`;
-    }).join("");
+    $("searchStatus").textContent = data.hits.length ? `${data.hits.length} chunk(s)` : "no matches";
+    renderHits(data.hits);
   } catch (err) {
     $("searchStatus").textContent = "error: " + err.message;
     $("searchStatus").className = "status err";
   }
 }
+
+/* ---------- vim-style result navigation ---------- */
+let sel = -1;
+
+function hitEls() { return [...document.querySelectorAll("#hits .hit")]; }
+
+function selectHit(i) {
+  const hits = hitEls();
+  if (!hits.length) return;
+  sel = Math.max(0, Math.min(i, hits.length - 1));
+  hits.forEach((el, n) => el.classList.toggle("sel", n === sel));
+  hits[sel].scrollIntoView({ block: "nearest" });
+}
+
+function setOpen(open) {
+  const hits = hitEls();
+  if (sel < 0 || !hits[sel]) return;
+  hits[sel].querySelectorAll(".content").forEach(c => c.classList.toggle("open", open));
+}
+
+document.addEventListener("keydown", (e) => {
+  if (!$("viewRag").classList.contains("on")) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!hitEls().length) return;
+  switch (e.key) {
+    case "j": e.preventDefault(); selectHit(sel + 1); break;
+    case "k": e.preventDefault(); selectHit(sel - 1); break;
+    case "l": e.preventDefault(); setOpen(true); break;
+    case "h": e.preventDefault(); setOpen(false); break;
+    case "g": e.preventDefault(); selectHit(0); break;
+    case "G": e.preventDefault(); selectHit(hitEls().length - 1); break;
+    case "o":
+    case "Enter": {
+      const a = sel >= 0 && hitEls()[sel].querySelector("a");
+      if (a) { e.preventDefault(); window.open(a.href, "_blank", "noopener"); }
+      break;
+    }
+  }
+});
+
+$("hits").addEventListener("click", (e) => {
+  const c = e.target.closest(".content");
+  if (c) c.classList.toggle("open");
+});
 
 /* ---------- sources ---------- */
 async function loadSources() {
@@ -442,17 +611,17 @@ async function loadSources() {
     const res = await fetch("/sources");
     const data = await res.json();
     if (!data.sources.length) {
-      $("sourceRows").innerHTML = `<tr><td colspan="5" class="empty">nothing indexed yet</td></tr>`;
+      $("sourceRows").innerHTML = `<tr><td colspan="5" class="empty">nothing indexed yet — add a docs URL below</td></tr>`;
       return;
     }
     $("sourceRows").innerHTML = data.sources.map(s => `
       <tr>
-        <td style="font-weight:500">${esc(s.source_id)}</td>
+        <td>${esc(s.source_id)}</td>
         <td class="num">${s.pages}</td>
         <td class="num">${s.chunks}</td>
         <td style="color:var(--dim)">${esc(String(s.updated_at || "").slice(0, 16).replace("T", " "))}</td>
         <td style="text-align:right">
-          <button class="btn-ghost" onclick="deleteSource('${esc(s.source_id)}')">delete</button>
+          <button class="btn-ghost" data-del="${esc(s.source_id)}">delete</button>
         </td>
       </tr>`).join("");
   } catch {
@@ -460,17 +629,20 @@ async function loadSources() {
   }
 }
 
-async function deleteSource(id) {
+$("sourceRows").addEventListener("click", async (e) => {
+  const id = e.target.dataset?.del;
+  if (!id) return;
   if (!confirm(`Delete all indexed chunks for "${id}"?`)) return;
   await fetch("/sources/" + encodeURIComponent(id), { method: "DELETE" });
   loadSources();
-}
+});
 
 /* ---------- ingest + job polling ---------- */
 async function doIngest(ev) {
   ev.preventDefault();
   const btn = $("ingestForm").querySelector(".btn");
   const status = $("ingestStatus");
+  const bar = $("ingestBar");
   btn.disabled = true;
   status.className = "status";
   status.textContent = "submitting…";
@@ -490,9 +662,11 @@ async function doIngest(ev) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.status);
-    await pollJob(data.job_id, (cls, text) => {
+    bar.hidden = false;
+    await pollJob(data.job_id, (cls, text, pct) => {
       status.className = cls === "status" ? "status" : "status " + cls;
       status.textContent = text;
+      bar.firstElementChild.style.width = pct + "%";
       if (cls !== "status") btn.disabled = false;
     });
   } catch (err) {
@@ -507,9 +681,11 @@ $("ingestForm").addEventListener("submit", doIngest);
 
 loadChat();
 if (!$("chatLog").querySelectorAll(".msg").length) {
-  addMsg("bot", "Hi! Ask anything about the indexed docs — try <em>\"how do I install pydantic?\"</em>");
+  addMsg("bot", GREETING).classList.add("greet");
+  saveChat();
 }
 loadSources();
+autoGrow();
 </script>
 </body>
 </html>
