@@ -120,6 +120,9 @@ async def ingest_documentation(
                 report()
                 continue
             chunks = chunk_markdown(markdown)
+            if not chunks:
+                result.errors += 1
+                continue
             for index, chunk in enumerate(chunks):
                 pending.append(
                     {
