@@ -3,6 +3,11 @@
 Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFace)
 → store in Postgres+pgvector → semantic search via MCP server, REST API, and web UI.
 
+## Demo
+<img width="2559" height="1487" alt="image" src="https://github.com/user-attachments/assets/0951996f-7b78-487c-bf04-6d965198e589" />
+
+live at https://fathom-mcp.veermehta.dev
+
 ## Architecture
 
 ```mermaid
