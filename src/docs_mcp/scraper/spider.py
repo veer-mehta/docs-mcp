@@ -75,6 +75,7 @@ class DocsSpider(scrapy.Spider):
         self.lang = lang.lower().strip()
         self.use_sitemap = sitemap
         self.seen: set[str] = set()
+        self.emitted: set[str] = set()
         self._root_landed = False
         self._cache_dir: Path | None = None
         if cache_dir:
@@ -208,8 +209,8 @@ class DocsSpider(scrapy.Spider):
             if len(segments) > 1:
                 self.base_path = "/" + "/".join(segments[:-1])
 
-        if url not in self.seen:
-            self.seen.add(url)
+        if url not in self.emitted:
+            self.emitted.add(url)
             title = response.css("title::text").get()
             title_clean = (title or "").strip() or None
             html = response.text
