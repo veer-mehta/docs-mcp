@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,8 +37,8 @@ class Settings(BaseSettings):
     crawl_cache_dir: str = str(DEFAULT_CACHE_DIR)
     user_agent: str = "fathom-mcp/0.1 (documentation indexer)"
     mcp_transport: str = "stdio"
-    api_host: str = "127.0.0.1"
-    api_port: int = 8000
+    api_host: str = "0.0.0.0"
+    api_port: int = int(os.environ.get("PORT", 8000))
 
 
 settings = Settings()

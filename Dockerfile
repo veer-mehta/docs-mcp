@@ -13,6 +13,6 @@ RUN playwright install --with-deps chromium
 
 COPY src/ src/
 
-EXPOSE 8000
+EXPOSE ${PORT:-8000}
 
 CMD ["python", "-m", "docs_mcp.api"]
