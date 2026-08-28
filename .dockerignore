@@ -9,5 +9,4 @@ npm/
 .env
 .env.example
 AGENTS.md
-README.md
 docker-compose.yml
