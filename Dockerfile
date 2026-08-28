@@ -6,12 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+COPY . .
 RUN pip install --no-cache-dir .
 
 RUN playwright install --with-deps chromium
-
-COPY src/ src/
 
 EXPOSE ${PORT:-8000}
 
