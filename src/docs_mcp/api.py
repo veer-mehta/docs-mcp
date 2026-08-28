@@ -12,8 +12,10 @@ from starlette.routing import Route
 
 from docs_mcp import __version__
 from docs_mcp.config import settings
+from docs_mcp.doc_finder import detect_language, find_doc_url, filter_deps
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.jobs import JOBS, submit_ingest
+from docs_mcp.parsers import parse_dep_file
 from docs_mcp.pipeline import ingest_documentation, ingest_files, ingest_folder
 from docs_mcp.storage.db import Database, source_pattern
 from docs_mcp.llm import generate_llm_response
@@ -240,6 +242,48 @@ async def upload_folder(request):
     return JSONResponse(asdict(result))
 
 
+async def ingest_deps(request):
+    try:
+        form = await request.form()
+    except Exception:
+        return JSONResponse({"error": "invalid form data"}, status_code=400)
+    upload_file = None
+    for key in form:
+        if key == "name":
+            continue
+        f = form[key]
+        if hasattr(f, "read"):
+            upload_file = f
+            break
+    if not upload_file:
+        return JSONResponse({"error": "no file provided"}, status_code=400)
+    filename = upload_file.filename or "deps.txt"
+    content = (await upload_file.read()).decode("utf-8", errors="replace")
+    deps = parse_dep_file(filename, content)
+    if not deps:
+        return JSONResponse({"error": f"could not parse dependencies from {filename}"}, status_code=400)
+    max_deps = int(form.get("max_deps", 20))
+    deps = filter_deps(deps, max_deps=max_deps)
+    lang = detect_language(deps)
+    results = []
+    for dep in deps:
+        doc_url = await find_doc_url(dep)
+        if doc_url:
+            results.append({"name": dep.name, "version": dep.version, "url": doc_url, "ecosystem": dep.ecosystem})
+    if lang and lang in ("python", "node"):
+        from docs_mcp.doc_finder import LANGUAGE_DOCS
+        lang_url = LANGUAGE_DOCS.get(lang)
+        if lang_url:
+            results.append({"name": lang, "version": "latest", "url": lang_url, "ecosystem": "language"})
+    if not results:
+        return JSONResponse({"error": "no documentation URLs found"}, status_code=404)
+    return JSONResponse({
+        "dependencies": results,
+        "language": lang,
+        "total": len(results),
+    })
+
+
 routes = [
     Route("/", index, methods=["GET"]),
     Route("/about", about, methods=["GET"]),
@@ -249,6 +293,7 @@ routes = [
     Route("/ingest", ingest, methods=["POST"]),
     Route("/upload", upload, methods=["POST"]),
     Route("/upload-folder", upload_folder, methods=["POST"]),
+    Route("/ingest-deps", ingest_deps, methods=["POST"]),
     Route("/jobs", list_jobs, methods=["GET"]),
     Route("/jobs/{job_id}", get_job, methods=["GET"]),
     Route("/llm-chat", llm_chat, methods=["GET"]),

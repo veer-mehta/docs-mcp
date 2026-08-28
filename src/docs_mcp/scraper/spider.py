@@ -66,6 +66,7 @@ class DocsSpider(scrapy.Spider):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+        self.custom_settings["CLOSESPIDER_PAGECOUNT"] = max_pages
         self.base_url = normalize_url(base_url)
         parsed = urlparse(self.base_url)
         self.allowed_domains: set[str] = {parsed.netloc}
