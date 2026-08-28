@@ -13,7 +13,7 @@ flowchart LR
     B --> G[Ingestion Pipeline]
     G --> H[Scraper Subprocess]
     G --> C
-    I[AI Client<br/>Claude, Cursor] -->|MCP over stdio| F[MCP Server]
+    I[AI Client<br/>Claude Code, OpenCode] -->|MCP over stdio| F[MCP Server]
     F --> C
 ```
 
