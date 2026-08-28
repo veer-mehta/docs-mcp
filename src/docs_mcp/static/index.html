@@ -18,10 +18,12 @@
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; margin: 0; }
+  html { overflow-x: hidden; }
   body {
     background: var(--bg); color: var(--text);
     font: 400 18px/1.7 var(--serif);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 64px 24px 120px; }
   .wrap.chat-active { padding-bottom: 24px; }
@@ -166,8 +168,8 @@
   .hit:last-child { border-bottom: 0; }
   .hit.sel { background: linear-gradient(90deg, var(--surface2), transparent 80%); }
   .hit.sel .rank { color: var(--text); }
-  .hit-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .hit-head a { font: 500 20px/1.35 var(--serif); }
+  .hit-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; overflow-wrap: break-word; }
+  .hit-head a { font: 500 20px/1.35 var(--serif); overflow-wrap: break-word; word-break: break-word; }
   .rank { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
   .count { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
   .chunk { margin-top: 12px; }
@@ -175,7 +177,7 @@
   .crumb span:not(:last-child)::after { content: " › "; color: var(--border2); }
   .content {
     white-space: pre-wrap; color: var(--muted); font-size: 13.5px; line-height: 1.6;
-    cursor: pointer;
+    cursor: pointer; overflow-wrap: break-word; word-break: break-word;
     display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
   }
   .content.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
