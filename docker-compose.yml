@@ -1,7 +1,7 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: docs-mcp-postgres
+    container_name: fathom-mcp-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: docs_mcp
@@ -16,6 +16,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+
+  api:
+    build: .
+    container_name: fathom-mcp-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://docs_mcp:docs_mcp@postgres:5432/docs_mcp
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:
