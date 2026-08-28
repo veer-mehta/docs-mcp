@@ -16,9 +16,6 @@ from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
 
-EMBED_BATCH_SIZE = 8
-
-
 @dataclass
 class IngestResult:
     source_id: str
@@ -139,7 +136,7 @@ async def ingest_documentation(
                 )
             result.pages_indexed += 1
             report()
-            if len(pending) >= EMBED_BATCH_SIZE:
+            if len(pending) >= 8:
                 await _flush_pending(provider, db, pending, result)
 
         await _flush_pending(provider, db, pending, result)
@@ -203,7 +200,7 @@ async def ingest_files(
                     }
                 )
             result.pages_indexed += 1
-            if len(pending) >= EMBED_BATCH_SIZE:
+            if len(pending) >= 8:
                 await _flush_pending(provider, db, pending, result)
         finally:
             tmp_path.unlink(missing_ok=True)

@@ -61,26 +61,23 @@ class LocalEmbeddingProvider:
         return int(get_dimension())
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        return await asyncio.to_thread(self._encode, texts)
+        return await asyncio.to_thread(self._run, texts)
 
-    def _encode(self, texts: list[str]) -> list[list[float]]:
+    def _run(self, texts: list[str], device: str | None = None) -> list[list[float]]:
+        kwargs = {"device": device} if device else {}
         try:
-            return self._run(texts)
+            return self._model.encode(
+                texts, normalize_embeddings=True, show_progress_bar=False, **kwargs
+            ).tolist()
         except _cuda_oom_error():
             logger.warning(
                 "CUDA out of memory embedding %d texts; falling back to CPU",
                 len(texts),
             )
             _empty_cache()
-            return self._run(texts, device="cpu")
-
-    def _run(
-        self, texts: list[str], device: str | None = None
-    ) -> list[list[float]]:
-        kwargs = {"device": device} if device else {}
-        return self._model.encode(
-            texts, normalize_embeddings=True, show_progress_bar=False, **kwargs
-        ).tolist()
+            return self._model.encode(
+                texts, normalize_embeddings=True, show_progress_bar=False, device="cpu"
+            ).tolist()
 
 
 def _cuda_oom_error() -> type[Exception]:

@@ -59,7 +59,7 @@ class Job:
 
 
 class JobRegistry:
-    def __init__(self, capacity: int = MAX_JOB_HISTORY):
+    def __init__(self, capacity: int = MAX_JOB_HISTORY) -> None:
         self._capacity = capacity
         self._jobs: dict[str, Job] = {}
 

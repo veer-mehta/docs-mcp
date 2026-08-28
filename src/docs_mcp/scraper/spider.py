@@ -75,7 +75,6 @@ class DocsSpider(scrapy.Spider):
         self.lang = lang.lower().strip()
         self.use_sitemap = sitemap
         self.seen: set[str] = set()
-        self.emitted: set[str] = set()
         self._root_landed = False
         self._cache_dir: Path | None = None
         if cache_dir:
@@ -88,35 +87,27 @@ class DocsSpider(scrapy.Spider):
         if not self._cache_dir:
             return None
         url = normalize_url(url)
-        meta_path = self._cache_dir / f"{_url_key(url)}.meta.json"
-        html_path = self._cache_dir / f"{_url_key(url)}.html"
-        if not meta_path.exists() or not html_path.exists():
+        cache_path = self._cache_dir / f"{_url_key(url)}.json"
+        if not cache_path.exists():
             return None
         try:
-            meta = json.loads(meta_path.read_text())
-            if (meta.get("ts", 0)) < (time.time() - CACHE_EXPIRY):
+            data = json.loads(cache_path.read_text())
+            if (data.get("ts", 0)) < (time.time() - CACHE_EXPIRY):
                 return None
-            return {
-                "title": meta.get("title"),
-                "html": html_path.read_text(),
-                "final_url": meta.get("final_url", url),
-            }
+            return data
         except Exception:
             return None
 
     def _cache_put(self, url: str, title: str | None, html: str, final_url: str | None = None) -> None:
         if not self._cache_dir:
             return
-
         key = _url_key(url)
-        meta_path = self._cache_dir / f"{key}.meta.json"
-        html_path = self._cache_dir / f"{key}.html"
+        cache_path = self._cache_dir / f"{key}.json"
         try:
-            meta = {"url": url, "title": title, "ts": time.time()}
+            data = {"url": url, "title": title, "html": html, "ts": time.time()}
             if final_url:
-                meta["final_url"] = final_url
-            meta_path.write_text(json.dumps(meta))
-            html_path.write_text(html)
+                data["final_url"] = final_url
+            cache_path.write_text(json.dumps(data))
         except OSError as e:
             self.logger.warning("cache write failed for %s: %s", url, e)
 
@@ -217,8 +208,8 @@ class DocsSpider(scrapy.Spider):
             if len(segments) > 1:
                 self.base_path = "/" + "/".join(segments[:-1])
 
-        if url not in self.emitted:
-            self.emitted.add(url)
+        if url not in self.seen:
+            self.seen.add(url)
             title = response.css("title::text").get()
             title_clean = (title or "").strip() or None
             html = response.text
