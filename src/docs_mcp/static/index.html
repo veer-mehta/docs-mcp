@@ -24,6 +24,7 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 64px 24px 120px; }
+  .wrap.chat-active { padding-bottom: 24px; }
 
   /* machine chrome speaks mono; prose speaks serif */
   .mono, label, .section-label, .status, .tabs button, .btn, .btn-ghost,
@@ -454,16 +455,16 @@
     <div class="about-body">
       <p>Documentation RAG system: crawl a docs site, upload files, or index a local folder — then semantic search and chat with your docs via MCP, REST API, or web UI.</p>
       <p class="about-links">
-        <a href="https://github.com/yourname/docs-mcp" target="_blank" rel="noopener">github</a>
+        <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a>
         <span class="dim">·</span>
-        <a href="https://pypi.org/project/docs-mcp/" target="_blank" rel="noopener">pypi</a>
+        <a href="https://pypi.org/project/fathom-mcp/" target="_blank" rel="noopener">pypi</a>
         <span class="dim">·</span>
         <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">mcp protocol</a>
       </p>
     </div>
   </section>
 </div>
-<footer>created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer</a></footer>
+<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer</a> · <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -507,6 +508,8 @@ function showView(tab) {
   $("viewChat").classList.toggle("on", tab === "chat");
   $("viewRag").classList.toggle("on", tab === "rag");
   $("viewAbout").classList.toggle("on", tab === "about");
+  $("siteFooter").hidden = tab === "chat";
+  document.querySelector(".wrap").classList.toggle("chat-active", tab === "chat");
   if (tab === "about") { loadAbout(); startAboutPoll(); } else { stopAboutPoll(); }
 }
 $("tabChat").addEventListener("click", () => showView("chat"));
