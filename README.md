@@ -59,10 +59,16 @@ Add to `~/.config/opencode/opencode.jsonc`:
   "mcp": {
     "fathom-mcp": {
       "type": "local",
-      "command": ["npx", "-y", "@fathom-mcp/server"]
+      "command": ["/path/to/fathom-mcp/.venv/bin/python", "-m", "docs_mcp.server"]
     }
   }
 }
+```
+
+Replace `/path/to/fathom-mcp` with your actual clone path. You can verify it works with:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /path/to/fathom-mcp/.venv/bin/python -m docs_mcp.server
 ```
 
 ## Config
