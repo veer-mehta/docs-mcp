@@ -161,3 +161,24 @@ def submit_ingest(
     )
     job._task = asyncio.get_running_loop().create_task(_run(job))
     return job
+
+
+async def ingest_or_submit(
+    db: Database,
+    *,
+    name: str,
+    version: str,
+    base_url: str,
+    background: bool = False,
+    **kwargs,
+) -> tuple[dict, int]:
+    """Returns (body_dict, http_status)."""
+    if background:
+        job = submit_ingest(
+            db, name=name, version=version, base_url=base_url, **kwargs
+        )
+        return {"job_id": job.id, "status": job.status, "poll": f"/jobs/{job.id}"}, 202
+    result = await ingest_documentation(
+        db, name=name, version=version, base_url=base_url, **kwargs
+    )
+    return result, 200

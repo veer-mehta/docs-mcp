@@ -12,9 +12,33 @@ from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.processing.chunker import chunk_markdown
 from docs_mcp.processing.extract import html_to_markdown, file_to_markdown
-from docs_mcp.storage.db import Database
+from docs_mcp.storage.db import Database, source_pattern
 
 logger = logging.getLogger(__name__)
+
+
+async def embed_and_search(
+    db: Database,
+    query: str,
+    *,
+    name: str | None = None,
+    version: str | None = None,
+    k: int = 5,
+    mode: str = "hybrid",
+    min_similarity: float | None = None,
+):
+    provider = get_embedding_provider()
+    await db.ensure_schema(provider.dimensions)
+    vectors = await provider.embed([query])
+    kwargs: dict = dict(
+        query_text=query,
+        pattern=source_pattern(name, version),
+        k=max(1, min(k, 20)),
+        mode=mode,
+    )
+    if min_similarity is not None:
+        kwargs["min_similarity"] = min_similarity
+    return await db.search(vectors[0], **kwargs)
 
 @dataclass
 class IngestResult:

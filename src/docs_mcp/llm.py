@@ -8,6 +8,42 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 
 
+async def answer_question(db, query: str) -> dict:
+    from docs_mcp.pipeline import embed_and_search
+
+    hits = await embed_and_search(db, query, k=5, mode="hybrid")
+    if not hits:
+        return {"answer": "No matching documentation found.", "sources": []}
+    context_lines = []
+    for hit in hits:
+        header = hit.title or hit.url
+        if hit.heading_path:
+            header += " — " + " > ".join(hit.heading_path)
+        context_lines.append(f"**{header}**\n\n{hit.content}")
+    context = "\n\n".join(context_lines)
+    prompt = (
+        "Answer the following question using only the provided context. "
+        "Keep it concise and conversational.\n\n"
+        f"Question: {query}\n\nContext:\n{context}"
+    )
+    answer = await generate_llm_response(prompt)
+    sources: list[dict] = []
+    seen_urls: set[str] = set()
+    for hit in hits:
+        if hit.url in seen_urls:
+            continue
+        seen_urls.add(hit.url)
+        sources.append(
+            {
+                "title": hit.title or hit.url,
+                "url": hit.url,
+                "heading_path": hit.heading_path,
+                "content": hit.content,
+            }
+        )
+    return {"answer": answer, "sources": sources}
+
+
 async def generate_llm_response(prompt: str) -> str:
     import httpx
 

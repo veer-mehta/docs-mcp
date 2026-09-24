@@ -6,8 +6,8 @@ from mcp.server.mcpserver import MCPServer
 
 from docs_mcp.config import settings
 from docs_mcp.jobs import JOBS, submit_ingest
-from docs_mcp.pipeline import ingest_documentation, ingest_folder
-from docs_mcp.storage.db import Database, source_pattern
+from docs_mcp.pipeline import embed_and_search, ingest_documentation, ingest_folder
+from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
 
@@ -118,13 +118,8 @@ async def search_documentation(
 
     provider = get_embedding_provider()
     await db.ensure_schema(provider.dimensions)
-    vectors = await provider.embed([query])
-    hits = await db.search(
-        vectors[0],
-        query_text=query,
-        pattern=source_pattern(name, version),
-        k=max(1, min(k, 20)),
-        mode=mode,
+    hits = await embed_and_search(
+        db, query, name=name, version=version, k=k, mode=mode
     )
     if not hits:
         return "No matching documentation found. Call add_documentation first."
