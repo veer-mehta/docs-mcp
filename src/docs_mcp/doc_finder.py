@@ -3,7 +3,7 @@ import re
 
 import httpx
 
-from docs_mcp.parsers import Dependency
+from docs_mcp.parsers import Dependency, parse_dep_file
 
 logger = logging.getLogger(__name__)
 
@@ -117,3 +117,27 @@ def detect_language(deps: list[Dependency]) -> str | None:
     if ecosystems.count("npm") > ecosystems.count("pypi"):
         return "node"
     return None
+
+
+async def resolve_dependencies(
+    filename: str, content: str, max_deps: int = 20
+) -> dict:
+    deps = parse_dep_file(filename, content)
+    if not deps:
+        raise ValueError(f"could not parse dependencies from {filename}")
+    deps = filter_deps(deps, max_deps=max_deps)
+    lang = detect_language(deps)
+    results = []
+    for dep in deps:
+        doc_url = await find_doc_url(dep)
+        if doc_url:
+            results.append(
+                {"name": dep.name, "version": dep.version, "url": doc_url, "ecosystem": dep.ecosystem}
+            )
+    if lang and lang in LANGUAGE_DOCS:
+        results.append(
+            {"name": lang, "version": "latest", "url": LANGUAGE_DOCS[lang], "ecosystem": "language"}
+        )
+    if not results:
+        raise ValueError("no documentation URLs found")
+    return {"dependencies": results, "language": lang, "total": len(results)}

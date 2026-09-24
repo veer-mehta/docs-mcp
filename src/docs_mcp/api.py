@@ -12,13 +12,12 @@ from starlette.routing import Route
 
 from docs_mcp import __version__
 from docs_mcp.config import settings
-from docs_mcp.doc_finder import detect_language, find_doc_url, filter_deps
+from docs_mcp.doc_finder import resolve_dependencies
 from docs_mcp.embeddings import get_embedding_provider
-from docs_mcp.jobs import JOBS, submit_ingest
-from docs_mcp.parsers import parse_dep_file
-from docs_mcp.pipeline import ingest_documentation, ingest_files, ingest_folder
-from docs_mcp.storage.db import Database, source_pattern
-from docs_mcp.llm import generate_llm_response
+from docs_mcp.jobs import JOBS, ingest_or_submit
+from docs_mcp.pipeline import embed_and_search, ingest_files, ingest_folder
+from docs_mcp.storage.db import Database
+from docs_mcp.llm import answer_question
 
 logger = logging.getLogger(__name__)
 
@@ -48,34 +47,19 @@ async def ingest(request):
         return JSONResponse(
             {"error": f"missing required field: {exc}"}, status_code=400
         )
-    if payload.get("background"):
-        job = submit_ingest(
-            db,
-            name=name,
-            version=version,
-            base_url=base_url,
-            max_depth=payload.get("max_depth"),
-            max_pages=payload.get("max_pages"),
-            prune_missing=bool(payload.get("prune_missing")),
-            lang=payload.get("lang", ""),
-            sitemap=bool(payload.get("sitemap")),
-        )
-        return JSONResponse(
-            {"job_id": job.id, "status": job.status, "poll": f"/jobs/{job.id}"},
-            status_code=202,
-        )
-    result = await ingest_documentation(
+    body, status = await ingest_or_submit(
         db,
         name=name,
         version=version,
         base_url=base_url,
+        background=bool(payload.get("background")),
         max_depth=payload.get("max_depth"),
         max_pages=payload.get("max_pages"),
         prune_missing=bool(payload.get("prune_missing")),
         lang=payload.get("lang", ""),
         sitemap=bool(payload.get("sitemap")),
     )
-    return JSONResponse(result)
+    return JSONResponse(body, status_code=status)
 
 
 async def get_job(request):
@@ -101,24 +85,19 @@ async def search(request):
             {"error": f"unknown mode: {mode} (use hybrid|vector|keyword)"},
             status_code=400,
         )
-    provider = get_embedding_provider()
-    vectors = await provider.embed([query])
-    k = int(request.query_params.get("k", 5))
-    min_sim = float(request.query_params.get("min_sim", 0.35))
     try:
-        hits = await db.search(
-            vectors[0],
-            query_text=query,
-            pattern=source_pattern(
-                request.query_params.get("name"), request.query_params.get("version")
-            ),
-            k=max(1, min(k, 20)),
+        hits = await embed_and_search(
+            db, query,
+            name=request.query_params.get("name"),
+            version=request.query_params.get("version"),
+            k=int(request.query_params.get("k", 5)),
             mode=mode,
-            min_similarity=min_sim,
+            min_similarity=float(request.query_params.get("min_sim", 0.35)),
         )
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
-    return JSONResponse({"query": query, "mode": mode, "hits": [asdict(hit) for hit in hits]})
+    from dataclasses import asdict as _asdict
+    return JSONResponse({"query": query, "mode": mode, "hits": [_asdict(hit) for hit in hits]})
 
 
 async def sources(request):
@@ -168,39 +147,7 @@ async def llm_chat(request):
     if not query:
         return JSONResponse({"error": "Missing 'q' parameter"}, status_code=400)
     try:
-        provider = get_embedding_provider()
-        vectors = await provider.embed([query])
-        hits = await db.search(vectors[0], query_text=query, k=5, mode="hybrid")
-        if not hits:
-            return JSONResponse({"answer": "No matching documentation found.", "sources": []})
-        context_lines = []
-        for hit in hits:
-            header = hit.title or hit.url
-            if hit.heading_path:
-                header += " — " + " > ".join(hit.heading_path)
-            context_lines.append(f"**{header}**\n\n{hit.content}")
-        context = "\n\n".join(context_lines)
-        prompt = (
-            "Answer the following question using only the provided context. "
-            "Keep it concise and conversational.\n\n"
-            f"Question: {query}\n\nContext:\n{context}"
-        )
-        answer = await generate_llm_response(prompt)
-        sources: list[dict] = []
-        seen_urls: set[str] = set()
-        for hit in hits:
-            if hit.url in seen_urls:
-                continue
-            seen_urls.add(hit.url)
-            sources.append(
-                {
-                    "title": hit.title or hit.url,
-                    "url": hit.url,
-                    "heading_path": hit.heading_path,
-                    "content": hit.content,
-                }
-            )
-        return JSONResponse({"answer": answer, "sources": sources})
+        return JSONResponse(await answer_question(db, query))
     except Exception as exc:
         logger.exception("Error in llm_chat endpoint")
         return JSONResponse({"error": f"Processing failed: {exc}"}, status_code=500)
@@ -259,29 +206,13 @@ async def ingest_deps(request):
         return JSONResponse({"error": "no file provided"}, status_code=400)
     filename = upload_file.filename or "deps.txt"
     content = (await upload_file.read()).decode("utf-8", errors="replace")
-    deps = parse_dep_file(filename, content)
-    if not deps:
-        return JSONResponse({"error": f"could not parse dependencies from {filename}"}, status_code=400)
-    max_deps = int(form.get("max_deps", 20))
-    deps = filter_deps(deps, max_deps=max_deps)
-    lang = detect_language(deps)
-    results = []
-    for dep in deps:
-        doc_url = await find_doc_url(dep)
-        if doc_url:
-            results.append({"name": dep.name, "version": dep.version, "url": doc_url, "ecosystem": dep.ecosystem})
-    if lang and lang in ("python", "node"):
-        from docs_mcp.doc_finder import LANGUAGE_DOCS
-        lang_url = LANGUAGE_DOCS.get(lang)
-        if lang_url:
-            results.append({"name": lang, "version": "latest", "url": lang_url, "ecosystem": "language"})
-    if not results:
-        return JSONResponse({"error": "no documentation URLs found"}, status_code=404)
-    return JSONResponse({
-        "dependencies": results,
-        "language": lang,
-        "total": len(results),
-    })
+    try:
+        result = await resolve_dependencies(
+            filename, content, max_deps=int(form.get("max_deps", 20))
+        )
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    return JSONResponse(result)
 
 
 routes = [
