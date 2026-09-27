@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>fathom</title>
+<title>docs-mcp</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #000; --surface: #111; --surface2: #191919;
     --border: #222; --border2: #333;
     --text: #ececec; --muted: #8b8b8b; --dim: #5a5a5a;
     --green: #4ade80; --red: #f87171;
-    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -40,8 +40,10 @@
   header h1 { font: 500 28px/1.2 var(--serif); letter-spacing: -.4px; margin: 0; transition: font-size .2s ease; }
   header.scrolled h1 { font-size: 18px; }
   header p { color: var(--muted); font-size: 17px; margin-top: 8px; font-style: italic; }
+  header { transition: border-color .2s ease; border-bottom: 1px solid transparent; }
+  header.scrolled { border-bottom-color: var(--border); }
 
-  .tabs { display: flex; gap: 4px; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
   .tabs button {
     background: none; border: none; color: var(--dim); cursor: pointer;
     padding: 7px 14px; font-size: 13px; border-radius: 6px; transition: all .12s;
@@ -301,9 +303,11 @@
   .source-item .source-name { font: 500 14px/1 var(--mono); color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .source-item .source-stats { font: 12px/1 var(--mono); color: var(--dim); display: flex; gap: 12px; flex-shrink: 0; }
   .source-item .source-stats span { display: flex; align-items: center; gap: 4px; }
-  .source-item .source-del { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 11px; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: all .12s; }
+  .source-item .source-del { background: none; border: 1px solid transparent; color: var(--dim); cursor: pointer; font-size: 11px; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: all .12s; }
   .source-item:hover .source-del { opacity: 1; }
   .source-item .source-del:hover { color: var(--red); }
+  .source-item .source-del.confirm { opacity: 1; color: var(--red); border-color: var(--red); }
+  .source-item .source-del:disabled { opacity: .5; cursor: wait; }
   .source-show-more { margin-top: 8px; background: none; border: 0; color: var(--dim); cursor: pointer; font: 12px var(--mono); }
   .source-show-more:hover { color: var(--muted); }
 
@@ -335,10 +339,11 @@
 <body>
 <div class="wrap">
 <header>
-    <h1>fathom-mcp</h1>
+    <h1>docs-mcp</h1>
     <div class="tabs">
       <button id="tabChat" class="on" type="button">chat</button>
-      <button id="tabRag" type="button">search & sources</button>
+      <button id="tabSearch" type="button">search</button>
+      <button id="tabSources" type="button">sources</button>
       <button id="tabAbout" type="button">about</button>
     </div>
   </header>
@@ -355,12 +360,12 @@
           </button>
         </div>
       </div>
-      <div class="status" id="chatStatus" style="text-align:center; margin-top:8px;">loading models…</div>
+      <div class="status" id="chatStatus" role="status" aria-live="polite" style="text-align:center; margin-top:8px;">loading models…</div>
     </div>
   </section>
 
-  <!-- ============ RAG ============ -->
-  <section id="viewRag" class="view">
+  <!-- ============ search ============ -->
+  <section id="viewSearch" class="view">
     <form id="searchForm">
       <div class="section-label">search</div>
       <div class="search-input">
@@ -376,6 +381,7 @@
         <input type="radio" name="mode" id="mVector" value="vector"><label for="mVector">vector</label>
         <input type="radio" name="mode" id="mKeyword" value="keyword"><label for="mKeyword">keyword</label>
       </div>
+      <div class="hint">hybrid blends meaning and exact words · vector favors meaning · keyword favors exact terms · <kbd>/</kbd> jumps back here</div>
       <details style="margin-top:14px">
         <summary>filters</summary>
         <div class="row" style="margin-top:14px">
@@ -384,15 +390,20 @@
           <div><label>limit</label><input id="fk" type="number" value="5" min="1" max="20"></div>
         </div>
       </details>
-      <div id="searchStatus" class="status"></div>
+      <div id="searchStatus" class="status" role="status" aria-live="polite"></div>
     </form>
 
-    <div id="hits" style="margin-top: 6px;"></div>
+    <div id="hits" style="margin-top: 6px;">
+      <div class="empty">try a query above, or narrow it with mode &amp; filters first</div>
+    </div>
     <div id="navHint" class="hint" hidden>
       <kbd>j</kbd> <kbd>k</kbd> move · <kbd>l</kbd> <kbd>h</kbd> expand/collapse · <kbd>g</kbd> <kbd>G</kbd> first/last · <kbd>enter</kbd> open
     </div>
+  </section>
 
-    <div class="section-label" style="margin-top:28px">indexed sources</div>
+  <!-- ============ sources ============ -->
+  <section id="viewSources" class="view">
+    <div class="section-label">indexed sources</div>
     <div id="sourceRows" class="source-list">
       <div class="empty">loading…</div>
     </div>
@@ -422,8 +433,9 @@
             <input type="checkbox" id="iprune"> prune removed pages
           </label>
         </div>
+        <div class="hint">only enable this if depth and max pages cover the whole site — otherwise pages outside the crawl's reach get deleted</div>
       </form>
-      <div id="ingestStatus" class="status"></div>
+      <div id="ingestStatus" class="status" role="status" aria-live="polite"></div>
       <div class="bar" id="ingestBar" hidden><i style="width:0"></i></div>
     </div>
 
@@ -439,7 +451,7 @@
       <div class="upload-files" id="uploadFiles"></div>
       <div style="margin-top:12px; display:flex; align-items:center; gap:14px">
         <button class="btn" id="uploadBtn" disabled>upload &amp; index</button>
-        <span id="uploadStatus" class="status"></span>
+        <span id="uploadStatus" class="status" role="status" aria-live="polite"></span>
       </div>
     </div>
 
@@ -450,9 +462,9 @@
       </div>
       <div style="margin-top:12px; display:flex; align-items:center; gap:14px">
         <button class="btn" id="folderBtn">index folder</button>
-        <span id="folderStatus" class="status"></span>
+        <span id="folderStatus" class="status" role="status" aria-live="polite"></span>
       </div>
-      <div class="hint" style="margin-top:8px">local server only — the path must be accessible from the machine running fathom</div>
+      <div class="hint" style="margin-top:8px">local server only — the path must be accessible from the machine running docs-mcp</div>
     </div>
 
     <div class="ingest-panel" id="ingestDeps">
@@ -465,7 +477,7 @@
       <div id="depList" style="margin-top:12px"></div>
       <div style="margin-top:12px; display:flex; align-items:center; gap:14px">
         <button class="btn" id="depBtn" disabled>ingest all</button>
-        <span id="depStatus" class="status"></span>
+        <span id="depStatus" class="status" role="status" aria-live="polite"></span>
       </div>
       <div class="bar" id="depBar" hidden><i style="width:0"></i></div>
     </div>
@@ -519,16 +531,16 @@
     <div class="about-body">
       <p>Documentation RAG system: crawl a docs site, upload files, or index a local folder — then semantic search and chat with your docs via MCP, REST API, or web UI.</p>
       <p class="about-links">
-        <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a>
+        <a href="https://github.com/veer-mehta/docs-mcp" target="_blank" rel="noopener">github</a>
         <span class="dim">·</span>
-        <a href="https://pypi.org/project/fathom-mcp/" target="_blank" rel="noopener">pypi</a>
+        <a href="https://pypi.org/project/docs-mcp/" target="_blank" rel="noopener">pypi</a>
         <span class="dim">·</span>
         <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">mcp protocol</a>
       </p>
     </div>
   </section>
 </div>
-<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer mehta</a> · <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a></footer>
+<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer mehta</a> · <a href="https://github.com/veer-mehta/docs-mcp" target="_blank" rel="noopener">github</a></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -565,23 +577,37 @@ function clean(html) {
 function setHTML(el, html) { el.innerHTML = clean(html); }
 
 /* ---------- view switching ---------- */
+let currentTab = "chat";
 function showView(tab) {
+  currentTab = tab;
   $("tabChat").classList.toggle("on", tab === "chat");
-  $("tabRag").classList.toggle("on", tab === "rag");
+  $("tabSearch").classList.toggle("on", tab === "search");
+  $("tabSources").classList.toggle("on", tab === "sources");
   $("tabAbout").classList.toggle("on", tab === "about");
   $("viewChat").classList.toggle("on", tab === "chat");
-  $("viewRag").classList.toggle("on", tab === "rag");
+  $("viewSearch").classList.toggle("on", tab === "search");
+  $("viewSources").classList.toggle("on", tab === "sources");
   $("viewAbout").classList.toggle("on", tab === "about");
   $("siteFooter").hidden = tab === "chat";
   document.querySelector(".wrap").classList.toggle("chat-active", tab === "chat");
   if (tab === "about") { loadAbout(); startAboutPoll(); } else { stopAboutPoll(); }
+  if (tab === "sources") loadSources();
 }
 $("tabChat").addEventListener("click", () => showView("chat"));
-$("tabRag").addEventListener("click", () => showView("rag"));
+$("tabSearch").addEventListener("click", () => showView("search"));
+$("tabSources").addEventListener("click", () => showView("sources"));
 $("tabAbout").addEventListener("click", () => showView("about"));
 
+/* "/" jumps into the current view's primary input, like search-focused docs sites */
+document.addEventListener("keydown", (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || e.key !== "/") return;
+  if (currentTab === "chat") { e.preventDefault(); $("chatQ").focus(); }
+  else if (currentTab === "search") { e.preventDefault(); $("q").focus(); }
+});
+
 /* ---------- chat persistence ---------- */
-const CHAT_KEY = "fathom_chat";
+const CHAT_KEY = "docs_mcp_chat";
 const CHAT_MAX = 50;
 const THINKING = '<span class="thinking">thinking…</span>';
 const GREETING = 'Ask anything about the indexed docs — try <code>"how do I install pydantic?"</code>';
@@ -719,6 +745,12 @@ function renderHits(hits) {
     }
     g.chunks.push(h);
   });
+  if (!groups.length) {
+    $("hits").innerHTML = `<div class="empty">no matches — try a different mode or fewer filters</div>`;
+    $("navHint").hidden = true;
+    sel = -1;
+    return;
+  }
   $("hits").innerHTML = groups.map(g => `
     <article class="hit">
       <div class="hit-head">
@@ -779,7 +811,7 @@ function setOpen(open) {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (!$("viewRag").classList.contains("on")) return;
+  if (!$("viewSearch").classList.contains("on")) return;
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (!hitEls().length) return;
@@ -825,7 +857,9 @@ async function loadSources() {
     allSources = data.sources || [];
     renderSources();
   } catch {
-    $("sourceRows").innerHTML = `<div class="empty">failed to load</div>`;
+    $("sourceRows").innerHTML = `<div class="empty">couldn't reach the server — <button class="btn-ghost" id="sourceRetry" type="button">retry</button></div>`;
+    const btn = $("sourceRetry");
+    if (btn) btn.addEventListener("click", loadSources);
   }
 }
 
@@ -852,10 +886,24 @@ function renderSources() {
   if (btn) btn.addEventListener("click", () => { sourceShowAll = true; renderSources(); });
 }
 
+/* click once to arm, click again within 3s to actually delete — avoids a
+   blocking native confirm() dialog for a routine, low-stakes action */
 $("sourceRows").addEventListener("click", async (e) => {
-  const id = e.target.dataset?.del;
-  if (!id) return;
-  if (!confirm(`Delete all indexed chunks for "${id}"?`)) return;
+  const btn = e.target.closest(".source-del");
+  if (!btn) return;
+  const id = btn.dataset.del;
+  if (!btn.classList.contains("confirm")) {
+    btn.classList.add("confirm");
+    btn.textContent = "confirm?";
+    btn.dataset.timer = setTimeout(() => {
+      btn.classList.remove("confirm");
+      btn.textContent = "delete";
+    }, 3000);
+    return;
+  }
+  clearTimeout(Number(btn.dataset.timer));
+  btn.disabled = true;
+  btn.textContent = "deleting…";
   await fetch("/sources/" + encodeURIComponent(id), { method: "DELETE" });
   loadSources();
 });
