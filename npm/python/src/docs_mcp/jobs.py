@@ -63,24 +63,8 @@ class JobRegistry:
         self._capacity = capacity
         self._jobs: dict[str, Job] = {}
 
-    def create(
-        self,
-        *,
-        name: str,
-        version: str,
-        base_url: str,
-        max_depth: int | None,
-        max_pages: int | None,
-        prune_missing: bool = False,
-        lang: str = "",
-        sitemap: bool = False,
-    ) -> Job:
-        job = Job(
-            id=uuid.uuid4().hex[:8],
-            name=name, version=version, base_url=base_url,
-            max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing,
-            lang=lang, sitemap=sitemap,
-        )
+    def create(self, *, name: str, version: str, base_url: str, max_depth: int | None, max_pages: int | None, prune_missing: bool = False, lang: str = "", sitemap: bool = False) -> Job:
+        job = Job(id=uuid.uuid4().hex[:8], name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
         self._prune()
         self._jobs[job.id] = job
         return job
@@ -133,17 +117,19 @@ def submit_ingest(
         try:
             if runner is not None:
                 job.result = await runner(
-                    name=job.name, version=job.version,
-                    base_url=job.base_url, max_depth=job.max_depth,
-                    max_pages=job.max_pages, prune_missing=job.prune_missing,
-                    on_progress=on_progress,
+                    name=job.name, version=job.version, base_url=job.base_url, max_depth=job.max_depth, max_pages=job.max_pages, prune_missing=job.prune_missing, on_progress=on_progress
                 )
             else:
                 job.result = await ingest_documentation(
-                    db, name=job.name, version=job.version,
-                    base_url=job.base_url, max_depth=job.max_depth,
-                    max_pages=job.max_pages, prune_missing=job.prune_missing,
-                    lang=job.lang, sitemap=job.sitemap,
+                    db,
+                    name=job.name,
+                    version=job.version,
+                    base_url=job.base_url,
+                    max_depth=job.max_depth,
+                    max_pages=job.max_pages,
+                    prune_missing=job.prune_missing,
+                    lang=job.lang,
+                    sitemap=job.sitemap,
                     on_progress=on_progress,
                 )
             job.status = "done"
@@ -154,10 +140,15 @@ def submit_ingest(
         finally:
             job.finished_at = datetime.now(timezone.utc)
 
-    job = registry.create(
-        name=name, version=version, base_url=base_url,
-        max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing,
-        lang=lang, sitemap=sitemap,
-    )
+    job = registry.create(name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
     job._task = asyncio.get_running_loop().create_task(_run(job))
     return job
+
+
+async def ingest_or_submit(db: Database, *, name: str, version: str, base_url: str, background: bool = False, **kwargs) -> tuple[dict, int]:
+    """Returns (body_dict, http_status)."""
+    if background:
+        job = submit_ingest(db, name=name, version=version, base_url=base_url, **kwargs)
+        return {"job_id": job.id, "status": job.status, "poll": f"/jobs/{job.id}"}, 202
+    result = await ingest_documentation(db, name=name, version=version, base_url=base_url, **kwargs)
+    return result, 200

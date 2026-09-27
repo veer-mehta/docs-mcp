@@ -33,3 +33,17 @@ No comments or docstrings unless their absence causes real damage. Intentional
 exceptions: the GPU-OOM note in `embeddings/local_provider.py`, the
 prune-only-on-clean-crawl warning in `pipeline.py`, and the MCP tool docstrings in
 `server.py` — those are protocol payloads sent to clients, not documentation.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `veer-mehta/fathom-mcp`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`, created lazily. See `docs/agents/domain.md`.

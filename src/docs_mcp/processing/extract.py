@@ -8,14 +8,7 @@ from markdownify import markdownify as md
 
 logger = logging.getLogger(__name__)
 
-_JUNK_SELECTORS = [
-    "script",
-    "style",
-    "noscript",
-    "nav",
-    "footer",
-    "[aria-hidden='true']",
-]
+_JUNK_SELECTORS = ["script", "style", "noscript", "nav", "footer", "[aria-hidden='true']"]
 
 
 def _collapse_blank(text: str) -> str:
@@ -34,16 +27,7 @@ def _fallback_markdown(html: str) -> str:
 
 def html_to_markdown(html: str, url: str) -> str | None:
     try:
-        result = trafilatura.extract(
-            html,
-            url=url,
-            output_format="markdown",
-            include_links=True,
-            include_tables=True,
-            include_images=False,
-            with_metadata=False,
-            favor_precision=True,
-        )
+        result = trafilatura.extract(html, url=url, output_format="markdown", include_links=True, include_tables=True, include_images=False, with_metadata=False, favor_precision=True)
     except Exception:
         logger.exception("trafilatura extraction failed for %s", url)
         result = None
@@ -71,6 +55,7 @@ def file_to_markdown(path: Path, filename: str) -> str | None:
     if ext == "pdf":
         try:
             import pymupdf
+
             doc = pymupdf.open(str(path))
             pages = []
             for page in doc:

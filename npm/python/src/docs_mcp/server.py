@@ -17,15 +17,7 @@ db = Database(settings.database_url)
 
 @mcp.tool()
 async def add_documentation(
-    name: str,
-    version: str,
-    base_url: str,
-    max_depth: int = 2,
-    max_pages: int = 30,
-    background: bool = False,
-    prune_missing: bool = False,
-    lang: str = "",
-    sitemap: bool = False,
+    name: str, version: str, base_url: str, max_depth: int = 2, max_pages: int = 30, background: bool = False, prune_missing: bool = False, lang: str = "", sitemap: bool = False
 ) -> str:
     """Crawl a framework/library documentation site and index it for semantic search.
 
@@ -51,29 +43,9 @@ async def add_documentation(
             that expose a sitemap.
     """
     if background:
-        job = submit_ingest(
-            db,
-            name=name,
-            version=version,
-            base_url=base_url,
-            max_depth=max_depth,
-            max_pages=max_pages,
-            prune_missing=prune_missing,
-            lang=lang,
-            sitemap=sitemap,
-        )
-        return json.dumps(
-            {
-                "job_id": job.id,
-                "source_id": job.source_id,
-                "status": job.status,
-                "note": f'Poll get_ingest_status(job_id="{job.id}") until status is done or failed.',
-            }
-        )
-    result = await ingest_documentation(
-        db, name, version, base_url, max_depth=max_depth, max_pages=max_pages,
-        lang=lang, sitemap=sitemap,
-    )
+        job = submit_ingest(db, name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
+        return json.dumps({"job_id": job.id, "source_id": job.source_id, "status": job.status, "note": f'Poll get_ingest_status(job_id="{job.id}") until status is done or failed.'})
+    result = await ingest_documentation(db, name, version, base_url, max_depth=max_depth, max_pages=max_pages, lang=lang, sitemap=sitemap)
     return json.dumps(result)
 
 
@@ -86,21 +58,12 @@ async def get_ingest_status(job_id: str) -> str:
     """
     job = JOBS.get(job_id)
     if job is None:
-        return (
-            f"Unknown job id: {job_id}. Jobs are kept in memory; "
-            "an id from a previous session is no longer valid."
-        )
+        return f"Unknown job id: {job_id}. Jobs are kept in memory; an id from a previous session is no longer valid."
     return json.dumps(job.to_dict())
 
 
 @mcp.tool()
-async def search_documentation(
-    query: str,
-    name: str | None = None,
-    version: str | None = None,
-    k: int = 5,
-    mode: str = "hybrid",
-) -> str:
+async def search_documentation(query: str, name: str | None = None, version: str | None = None, k: int = 5, mode: str = "hybrid") -> str:
     """Semantic search over indexed documentation.
 
     Returns the most relevant markdown chunks with their source URL and
@@ -119,13 +82,7 @@ async def search_documentation(
     provider = get_embedding_provider()
     await db.ensure_schema(provider.dimensions)
     vectors = await provider.embed([query])
-    hits = await db.search(
-        vectors[0],
-        query_text=query,
-        pattern=source_pattern(name, version),
-        k=max(1, min(k, 20)),
-        mode=mode,
-    )
+    hits = await db.search(vectors[0], query_text=query, pattern=source_pattern(name, version), k=max(1, min(k, 20)), mode=mode)
     if not hits:
         return "No matching documentation found. Call add_documentation first."
     blocks = []
@@ -134,11 +91,7 @@ async def search_documentation(
         crumb = " > ".join(hit.heading_path)
         if crumb:
             header += f" — {crumb}"
-        score = (
-            f"relevance {hit.similarity:.2f}"
-            if hit.similarity is not None
-            else f"match {hit.bm25_score:.4f}"
-        )
+        score = f"relevance {hit.similarity:.2f}" if hit.similarity is not None else f"match {hit.bm25_score:.4f}"
         blocks.append(f"### [{header}]({hit.url}) ({score})\n\n{hit.content}")
     return "\n\n---\n\n".join(blocks)
 
@@ -154,19 +107,12 @@ async def list_sources() -> str:
         updated = row["updated_at"]
         if isinstance(updated, datetime):
             updated = updated.isoformat()
-        lines.append(
-            f"- {row['source_id']}: {row['pages']} pages, {row['chunks']} chunks "
-            f"(updated {updated})"
-        )
+        lines.append(f"- {row['source_id']}: {row['pages']} pages, {row['chunks']} chunks (updated {updated})")
     return "\n".join(lines)
 
 
 @mcp.tool()
-async def add_local_docs(
-    name: str,
-    path: str,
-    recursive: bool = True,
-) -> str:
+async def add_local_docs(name: str, path: str, recursive: bool = True) -> str:
     """Index local documentation files from a folder on disk.
 
     Walks the folder, finds supported files (HTML, Markdown, PDF, TXT),
@@ -183,13 +129,15 @@ async def add_local_docs(
     if not resolved.is_dir():
         return f"Not a directory: {path}"
     result = await ingest_folder(db, name=name, folder_path=str(resolved), recursive=recursive)
-    return json.dumps({
-        "source_id": result.source_id,
-        "files_indexed": result.pages_indexed,
-        "chunks_indexed": result.chunks_indexed,
-        "errors": result.errors,
-        "note": f"Search with search_documentation(name=\"{name}\").",
-    })
+    return json.dumps(
+        {
+            "source_id": result.source_id,
+            "files_indexed": result.pages_indexed,
+            "chunks_indexed": result.chunks_indexed,
+            "errors": result.errors,
+            "note": f'Search with search_documentation(name="{name}").',
+        }
+    )
 
 
 def main() -> None:

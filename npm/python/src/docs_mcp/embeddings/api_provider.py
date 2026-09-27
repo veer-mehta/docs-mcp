@@ -35,11 +35,7 @@ class APIEmbeddingProvider:
         backoff = INITIAL_BACKOFF
         for attempt in range(MAX_RETRIES):
             async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(
-                    f"{self._base_url}/embeddings",
-                    headers={"Authorization": f"Bearer {self._api_key}"},
-                    json={"model": self._model, "input": texts, "dimensions": self._dims},
-                )
+                resp = await client.post(f"{self._base_url}/embeddings", headers={"Authorization": f"Bearer {self._api_key}"}, json={"model": self._model, "input": texts, "dimensions": self._dims})
                 if resp.status_code == 429:
                     retry_after = resp.headers.get("retry-after")
                     wait = float(retry_after) if retry_after else backoff

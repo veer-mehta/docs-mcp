@@ -15,6 +15,7 @@ def source_pattern(name: str | None, version: str | None) -> str | None:
         return f"%@{version}"
     return None
 
+
 TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS {table} (
     id BIGSERIAL PRIMARY KEY,
@@ -83,33 +84,15 @@ class Database:
         table = self._table
         async with pool.acquire() as conn:
             await conn.execute(SCHEMA_SQL)
-            await conn.execute(
-                TABLE_SQL.replace("{table}", table).replace("{dim}", str(dim))
-            )
-            await conn.execute(
-                f"CREATE INDEX IF NOT EXISTS {table}_embedding_hnsw "
-                f"ON {table} USING hnsw (embedding vector_cosine_ops)"
-            )
-            await conn.execute(
-                f"CREATE INDEX IF NOT EXISTS {table}_source_idx ON {table} (source_id)"
-            )
-            await conn.execute(
-                f"CREATE INDEX IF NOT EXISTS {table}_fts_idx "
-                f"ON {table} USING gin (to_tsvector('english', content))"
-            )
-            await conn.execute(
-                f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS content_hash TEXT"
-            )
-            actual = await conn.fetchval(
-                "SELECT format_type(a.atttypid, a.atttypmod) FROM pg_attribute a "
-                f"WHERE a.attrelid = '{table}'::regclass AND a.attname = 'embedding'"
-            )
+            await conn.execute(TABLE_SQL.replace("{table}", table).replace("{dim}", str(dim)))
+            await conn.execute(f"CREATE INDEX IF NOT EXISTS {table}_embedding_hnsw ON {table} USING hnsw (embedding vector_cosine_ops)")
+            await conn.execute(f"CREATE INDEX IF NOT EXISTS {table}_source_idx ON {table} (source_id)")
+            await conn.execute(f"CREATE INDEX IF NOT EXISTS {table}_fts_idx ON {table} USING gin (to_tsvector('english', content))")
+            await conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS content_hash TEXT")
+            actual = await conn.fetchval(f"SELECT format_type(a.atttypid, a.atttypmod) FROM pg_attribute a WHERE a.attrelid = '{table}'::regclass AND a.attname = 'embedding'")
             expected = f"vector({dim})"
             if actual != expected:
-                raise RuntimeError(
-                    f"{table}.embedding column is {actual}, expected {expected}; "
-                    f"DROP TABLE {table} and re-ingest"
-                )
+                raise RuntimeError(f"{table}.embedding column is {actual}, expected {expected}; DROP TABLE {table} and re-ingest")
 
     async def upsert_chunks(self, rows: list[dict]) -> None:
         if not rows:
@@ -135,27 +118,17 @@ class Database:
 
     async def get_source_hashes(self, source_id: str) -> dict[str, str | None]:
         pool = await self.pool()
-        rows = await pool.fetch(
-            f"SELECT DISTINCT ON (url) url, content_hash FROM {self._table} "
-            f"WHERE source_id = $1 ORDER BY url, chunk_index",
-            source_id,
-        )
+        rows = await pool.fetch(f"SELECT DISTINCT ON (url) url, content_hash FROM {self._table} WHERE source_id = $1 ORDER BY url, chunk_index", source_id)
         return {row["url"]: row["content_hash"] for row in rows}
 
     async def delete_stale_pages(self, source_id: str, keep_urls: set[str]) -> int:
         if not keep_urls:
             return 0
         pool = await self.pool()
-        status = await pool.execute(
-            f"DELETE FROM {self._table} WHERE source_id = $1 AND NOT (url = ANY($2))",
-            source_id,
-            list(keep_urls),
-        )
+        status = await pool.execute(f"DELETE FROM {self._table} WHERE source_id = $1 AND NOT (url = ANY($2))", source_id, list(keep_urls))
         return int(status.split()[-1])
 
-    async def _vector_rows(
-        self, query_vector: list[float], pattern: str | None, n: int
-    ) -> list[asyncpg.Record]:
+    async def _vector_rows(self, query_vector: list[float], pattern: str | None, n: int) -> list[asyncpg.Record]:
         pool = await self.pool()
         return await pool.fetch(
             f"SELECT id, url, title, heading_path, content, source_id, "
@@ -167,9 +140,7 @@ class Database:
             n,
         )
 
-    async def _keyword_rows(
-        self, query_text: str, pattern: str | None, n: int
-    ) -> list[asyncpg.Record]:
+    async def _keyword_rows(self, query_text: str, pattern: str | None, n: int) -> list[asyncpg.Record]:
         pool = await self.pool()
         terms = [t for t in query_text.split() if len(t) > 2]
         if len(terms) < 2:
@@ -204,14 +175,7 @@ class Database:
         )
 
     async def search(
-        self,
-        query_vector: list[float] | None = None,
-        *,
-        query_text: str | None = None,
-        pattern: str | None = None,
-        k: int = 5,
-        mode: str = "hybrid",
-        min_similarity: float = -1.0,
+        self, query_vector: list[float] | None = None, *, query_text: str | None = None, pattern: str | None = None, k: int = 5, mode: str = "hybrid", min_similarity: float = -1.0
     ) -> list[SearchHit]:
         if mode not in ("hybrid", "vector", "keyword"):
             raise ValueError(f"unknown search mode: {mode}")
@@ -254,37 +218,21 @@ class Database:
 
         ranked = sorted(entries.values(), key=lambda e: e[0], reverse=True)[:k]
         return [
-            SearchHit(
-                url=rep["url"],
-                title=rep["title"],
-                heading_path=list(rep["heading_path"]),
-                content=rep["content"],
-                source_id=rep.get("source_id", ""),
-                similarity=sim,
-                bm25_score=bm25,
-            )
+            SearchHit(url=rep["url"], title=rep["title"], heading_path=list(rep["heading_path"]), content=rep["content"], source_id=rep.get("source_id", ""), similarity=sim, bm25_score=bm25)
             for _, sim, bm25, rep in ranked
             if sim is None or sim >= min_similarity
         ]
 
     async def list_sources(self) -> list[dict]:
         pool = await self.pool()
-        rows = await pool.fetch(
-            f"SELECT source_id, count(DISTINCT url) AS pages, count(*) AS chunks, "
-            f"max(created_at) AS updated_at "
-            f"FROM {self._table} GROUP BY source_id ORDER BY source_id"
-        )
+        rows = await pool.fetch(f"SELECT source_id, count(DISTINCT url) AS pages, count(*) AS chunks, max(created_at) AS updated_at FROM {self._table} GROUP BY source_id ORDER BY source_id")
         return [dict(row) for row in rows]
 
     async def delete_source(self, source_id: str) -> int:
         pool = await self.pool()
-        status = await pool.execute(
-            f"DELETE FROM {self._table} WHERE source_id = $1", source_id
-        )
+        status = await pool.execute(f"DELETE FROM {self._table} WHERE source_id = $1", source_id)
         return int(status.split()[-1])
 
     async def drop_table(self) -> None:
         pool = await self.pool()
         await pool.execute(f"DROP TABLE IF EXISTS {self._table}")
-
-

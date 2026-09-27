@@ -1,6 +1,6 @@
 """Use docs_mcp as a plain Python library — no MCP, no HTTP.
 
-    .venv/bin/python scripts/demo.py
+.venv/bin/python scripts/demo.py
 """
 
 import asyncio
@@ -19,14 +19,7 @@ async def main() -> None:
     sources = await db.list_sources()
     if not any(s["source_id"] == "pydantic@2.13" for s in sources):
         print("ingesting pydantic@2.13 ...")
-        result = await ingest_documentation(
-            db,
-            name="pydantic",
-            version="2.13",
-            base_url="https://docs.pydantic.dev/latest/",
-            max_depth=1,
-            max_pages=4,
-        )
+        result = await ingest_documentation(db, name="pydantic", version="2.13", base_url="https://docs.pydantic.dev/latest/", max_depth=1, max_pages=4)
         print("ingest result:", result)
 
     for query in ["how do I install pydantic", "migrating from v1 to v2"]:

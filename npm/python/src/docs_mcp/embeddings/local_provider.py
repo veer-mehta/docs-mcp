@@ -13,16 +13,12 @@ class LocalEmbeddingProvider:
         device = self._resolve_device(settings.local_embedding_device)
         logger.info("loading %s on %s", settings.local_embedding_model, device)
         try:
-            self._model = SentenceTransformer(
-                settings.local_embedding_model, device=device
-            )
+            self._model = SentenceTransformer(settings.local_embedding_model, device=device)
         except Exception as exc:
             if device == "cpu":
                 raise
             logger.warning("loading on %s failed (%s); retrying on CPU", device, exc)
-            self._model = SentenceTransformer(
-                settings.local_embedding_model, device="cpu"
-            )
+            self._model = SentenceTransformer(settings.local_embedding_model, device="cpu")
         # Chunker caps chunks well below this; the model default (8192 for
         # bge-m3) makes activation memory explode on small GPUs.
         self._model.max_seq_length = settings.local_embedding_max_tokens
@@ -42,11 +38,7 @@ class LocalEmbeddingProvider:
         needed = int(settings.local_embedding_min_free_vram_gib * 1024**3)
         if free_bytes >= needed:
             return "cuda"
-        logger.warning(
-            "only %.1f GiB free on CUDA (<%.1f GiB needed); using CPU",
-            free_bytes / 1024**3,
-            needed / 1024**3,
-        )
+        logger.warning("only %.1f GiB free on CUDA (<%.1f GiB needed); using CPU", free_bytes / 1024**3, needed / 1024**3)
         return "cpu"
 
     @property
@@ -55,9 +47,7 @@ class LocalEmbeddingProvider:
 
     @property
     def dimensions(self) -> int:
-        get_dimension = getattr(
-            self._model, "get_embedding_dimension", None
-        ) or self._model.get_sentence_embedding_dimension
+        get_dimension = getattr(self._model, "get_embedding_dimension", None) or self._model.get_sentence_embedding_dimension
         return int(get_dimension())
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
@@ -66,18 +56,11 @@ class LocalEmbeddingProvider:
     def _run(self, texts: list[str], device: str | None = None) -> list[list[float]]:
         kwargs = {"device": device} if device else {}
         try:
-            return self._model.encode(
-                texts, normalize_embeddings=True, show_progress_bar=False, **kwargs
-            ).tolist()
+            return self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False, **kwargs).tolist()
         except _cuda_oom_error():
-            logger.warning(
-                "CUDA out of memory embedding %d texts; falling back to CPU",
-                len(texts),
-            )
+            logger.warning("CUDA out of memory embedding %d texts; falling back to CPU", len(texts))
             _empty_cache()
-            return self._model.encode(
-                texts, normalize_embeddings=True, show_progress_bar=False, device="cpu"
-            ).tolist()
+            return self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False, device="cpu").tolist()
 
 
 def _cuda_oom_error() -> type[Exception]:

@@ -13,10 +13,7 @@ from scrapy_playwright.page import PageMethod
 
 logger = logging.getLogger(__name__)
 
-NON_PAGE_EXTENSIONS = re.compile(
-    r"\.(png|jpe?g|gif|svg|ico|css|js|mjs|map|pdf|zip|gz|tar|rar|7z|mp4|webm|mp3|wav|woff2?|ttf|eot|xml|json|txt|rss|atom)$",
-    re.IGNORECASE,
-)
+NON_PAGE_EXTENSIONS = re.compile(r"\.(png|jpe?g|gif|svg|ico|css|js|mjs|map|pdf|zip|gz|tar|rar|7z|mp4|webm|mp3|wav|woff2?|ttf|eot|xml|json|txt|rss|atom)$", re.IGNORECASE)
 
 LANG_SEGMENT = re.compile(r"^[a-z]{2}(-[a-z]{2,3})?$")
 
@@ -45,26 +42,14 @@ class DocsSpider(scrapy.Spider):
         "DOWNLOAD_TIMEOUT": 45,
         "RETRY_TIMES": 1,
         "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
-        "DOWNLOAD_HANDLERS": {
-            "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-            "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-        },
+        "DOWNLOAD_HANDLERS": {"http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler", "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler"},
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_LAUNCH_OPTIONS": {"headless": True},
         "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 30_000,
         "REQUEST_FINGERPRINTER_IMPLEMENTATION": "2.7",
     }
 
-    def __init__(
-        self,
-        base_url: str,
-        max_depth: int = 2,
-        max_pages: int = 30,
-        cache_dir: str | None = None,
-        lang: str = "",
-        sitemap: bool = False,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, base_url: str, max_depth: int = 2, max_pages: int = 30, cache_dir: str | None = None, lang: str = "", sitemap: bool = False, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.base_url = normalize_url(base_url)
         parsed = urlparse(self.base_url)
@@ -124,12 +109,7 @@ class DocsSpider(scrapy.Spider):
                     cached = self._cache_get(url)
                     if cached is not None:
                         self._cache_hits += 1
-                        response = HtmlResponse(
-                            url=cached["final_url"],
-                            body=cached["html"].encode("utf-8"),
-                            encoding="utf-8",
-                            request=scrapy.Request(url),
-                        )
+                        response = HtmlResponse(url=cached["final_url"], body=cached["html"].encode("utf-8"), encoding="utf-8", request=scrapy.Request(url))
                         response.meta["depth"] = 0
                         for item in self.parse_page(response):
                             yield item
@@ -142,12 +122,7 @@ class DocsSpider(scrapy.Spider):
         cached = self._cache_get(self.base_url)
         if cached is not None:
             self._cache_hits += 1
-            response = HtmlResponse(
-                url=cached["final_url"],
-                body=cached["html"].encode("utf-8"),
-                encoding="utf-8",
-                request=scrapy.Request(self.base_url),
-            )
+            response = HtmlResponse(url=cached["final_url"], body=cached["html"].encode("utf-8"), encoding="utf-8", request=scrapy.Request(self.base_url))
             response.meta["depth"] = 0
             for item in self.parse_page(response):
                 yield item
@@ -187,16 +162,7 @@ class DocsSpider(scrapy.Spider):
 
     def _request(self, url: str) -> scrapy.Request:
         return scrapy.Request(
-            url,
-            callback=self.parse_page,
-            errback=self.on_error,
-            meta={
-                "playwright": True,
-                "playwright_page_methods": [
-                    PageMethod("wait_for_load_state", "networkidle")
-                ],
-                "download_timeout": 45,
-            },
+            url, callback=self.parse_page, errback=self.on_error, meta={"playwright": True, "playwright_page_methods": [PageMethod("wait_for_load_state", "networkidle")], "download_timeout": 45}
         )
 
     def parse_page(self, response: Response) -> Any:
@@ -218,11 +184,7 @@ class DocsSpider(scrapy.Spider):
             req_url = normalize_url(response.request.url)
             if req_url != url:
                 self._cache_put(req_url, title_clean, html, final_url=url)
-            yield {
-                "url": url,
-                "title": title_clean,
-                "html": html,
-            }
+            yield {"url": url, "title": title_clean, "html": html}
 
         if response.meta.get("depth", 0) >= self.max_depth:
             return
@@ -236,12 +198,7 @@ class DocsSpider(scrapy.Spider):
             cached = self._cache_get(candidate)
             if cached is not None:
                 self._cache_hits += 1
-                cached_response = HtmlResponse(
-                    url=cached["final_url"],
-                    body=cached["html"].encode("utf-8"),
-                    encoding="utf-8",
-                    request=scrapy.Request(candidate),
-                )
+                cached_response = HtmlResponse(url=cached["final_url"], body=cached["html"].encode("utf-8"), encoding="utf-8", request=scrapy.Request(candidate))
                 cached_response.meta["depth"] = response.meta.get("depth", 0) + 1
                 for item in self.parse_page(cached_response):
                     yield item
@@ -257,10 +214,7 @@ class DocsSpider(scrapy.Spider):
             return False
         if parsed.netloc not in self.allowed_domains:
             return False
-        if self.base_path and not (
-            parsed.path == self.base_path
-            or parsed.path.startswith(self.base_path + "/")
-        ):
+        if self.base_path and not (parsed.path == self.base_path or parsed.path.startswith(self.base_path + "/")):
             return False
         if NON_PAGE_EXTENSIONS.search(parsed.path):
             return False
@@ -278,6 +232,4 @@ class DocsSpider(scrapy.Spider):
         return first == self.lang or first.startswith(self.lang + "-")
 
     def on_error(self, failure) -> None:
-        self.logger.warning(
-            "failed to fetch %s: %s", failure.request.url, failure.value
-        )
+        self.logger.warning("failed to fetch %s: %s", failure.request.url, failure.value)

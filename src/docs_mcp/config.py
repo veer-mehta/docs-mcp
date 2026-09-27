@@ -11,11 +11,7 @@ NPM_ENV = HOME_DIR / ".fathom-mcp" / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=(str(NPM_ENV), str(PROJECT_ROOT / ".env")),
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = SettingsConfigDict(env_file=(str(NPM_ENV), str(PROJECT_ROOT / ".env")), env_file_encoding="utf-8", extra="ignore")
 
     database_url: str = "postgresql://docs_mcp:docs_mcp@localhost:5432/docs_mcp"
     embedding_provider: str = "local"

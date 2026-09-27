@@ -34,23 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     cache_dir = None if args.no_cache else args.cache_dir
 
     process = CrawlerProcess(
-        settings={
-            "ITEM_PIPELINES": {"docs_mcp.scraper.runner.JsonlStdoutPipeline": 100},
-            "LOG_LEVEL": "WARNING",
-            "DOWNLOAD_DELAY": args.delay,
-            "USER_AGENT": args.user_agent,
-        },
+        settings={"ITEM_PIPELINES": {"docs_mcp.scraper.runner.JsonlStdoutPipeline": 100}, "LOG_LEVEL": "WARNING", "DOWNLOAD_DELAY": args.delay, "USER_AGENT": args.user_agent},
         install_root_handler=False,
     )
-    process.crawl(
-        DocsSpider,
-        base_url=args.url,
-        max_depth=args.depth,
-        max_pages=args.max_pages,
-        cache_dir=cache_dir,
-        lang=args.lang,
-        sitemap=args.sitemap,
-    )
+    process.crawl(DocsSpider, base_url=args.url, max_depth=args.depth, max_pages=args.max_pages, cache_dir=cache_dir, lang=args.lang, sitemap=args.sitemap)
     process.start()
     return 0
 

@@ -78,6 +78,7 @@ When run with `--api`, serves at `http://127.0.0.1:8000`:
 - `POST /upload` — upload files (multipart)
 - `POST /upload-folder` — index a local folder
 - `GET /llm-chat?q=...` — chat with docs
+- `GET /docs` — interactive OpenAPI documentation
 
 ## License
 
