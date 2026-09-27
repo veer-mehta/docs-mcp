@@ -48,10 +48,7 @@ def merge_small_sections(sections: list[tuple[list[str], str]]) -> list[tuple[li
     for heading_path, text in sections:
         if merged and len(text) < MIN_SECTION_CHARS:
             prev_path, prev_text = merged[-1]
-            is_ancestor = (
-                len(prev_path) <= len(heading_path)
-                and heading_path[: len(prev_path)] == prev_path
-            )
+            is_ancestor = len(prev_path) <= len(heading_path) and heading_path[: len(prev_path)] == prev_path
             fits = len(prev_text) + len(text) + 2 <= MAX_CHUNK_CHARS * 2
             if is_ancestor and fits:
                 merged[-1] = (prev_path, f"{prev_text}\n\n{text}")
@@ -105,11 +102,7 @@ def pack_section(section: tuple[list[str], str], max_chars: int, overlap: int) -
     return chunks
 
 
-def chunk_markdown(
-    markdown: str,
-    max_chars: int = MAX_CHUNK_CHARS,
-    overlap: int = OVERLAP_CHARS,
-) -> list[Chunk]:
+def chunk_markdown(markdown: str, max_chars: int = MAX_CHUNK_CHARS, overlap: int = OVERLAP_CHARS) -> list[Chunk]:
     sections = merge_small_sections(split_sections(markdown))
     chunks: list[Chunk] = []
     for heading_path, text in sections:

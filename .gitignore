@@ -14,9 +14,4 @@ crawl_output/
 .claude/
 .vscode/
 .remember/
-bin/
 docs/
-#temp
-test_api.py
-doc_finder.py
-parsers.py

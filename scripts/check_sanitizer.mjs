@@ -1,4 +1,4 @@
-// Checks the clean() sanitizer in src/docs_mcp/static/index.html, which is the
+// Checks the clean() sanitizer in src/docs_mcp/index.html, which is the
 // only thing standing between LLM-authored markdown and innerHTML.
 //
 //   node scripts/check_sanitizer.mjs
@@ -31,7 +31,7 @@ if (!JSDOM) {
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const html = readFileSync(path.join(here, "../src/docs_mcp/static/index.html"), "utf8");
+const html = readFileSync(path.join(here, "../src/docs_mcp/index.html"), "utf8");
 const js = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).join("\n");
 const src = js.slice(js.indexOf("const OK_TAGS"), js.indexOf("function setHTML"));
 if (!src) { console.error("could not locate clean() in index.html"); process.exit(2); }

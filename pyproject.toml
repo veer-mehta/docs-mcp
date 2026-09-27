@@ -1,5 +1,5 @@
 [project]
-name = "fathom-mcp"
+name = "docs-mcp"
 version = "0.1.0"
 description = "MCP server that ingests framework documentation and serves it over a RAG pipeline"
 readme = "README.md"
@@ -7,6 +7,10 @@ requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = [
     "mcp[cli]>=1.9.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.7.0",
     "scrapy>=2.13.0",
     "scrapy-playwright>=0.0.43",
     "playwright>=1.49",
@@ -32,7 +36,7 @@ packages = ["src/docs_mcp"]
 
 [project.scripts]
 docs-mcp-server = "docs_mcp.server:main"
-docs-mcp-crawl = "docs_mcp.scraper.runner:main"
+docs-mcp-crawl = "docs_mcp.crawler:main"
 docs-mcp-api = "docs_mcp.api:main"
 
 [tool.pytest.ini_options]

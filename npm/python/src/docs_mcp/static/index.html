@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>fathom</title>
+<title>docs-mcp</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #000; --surface: #111; --surface2: #191919;
     --border: #222; --border2: #333;
     --text: #ececec; --muted: #8b8b8b; --dim: #5a5a5a;
     --green: #4ade80; --red: #f87171;
-    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; margin: 0; }
   html { overflow-x: clip; }
   body {
     background: var(--bg); color: var(--text);
-    font: 400 18px/1.7 var(--serif);
+    font: 400 20px/1.65 var(--serif);
     -webkit-font-smoothing: antialiased;
     overflow-x: clip;
   }
@@ -37,9 +37,8 @@
     margin-bottom: 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     position: sticky; top: 0; z-index: 10; padding: 12px 0; background: var(--bg);
   }
-  header h1 { font: 500 28px/1.2 var(--serif); letter-spacing: -.4px; margin: 0; transition: font-size .2s ease; }
-  header.scrolled h1 { font-size: 18px; }
-  header p { color: var(--muted); font-size: 17px; margin-top: 8px; font-style: italic; }
+  header h1 { font: 500 34px/1.2 var(--serif); letter-spacing: -.4px; margin: 0; transition: font-size .2s ease; }
+  header.scrolled h1 { font-size: 21px; }
 
   .tabs { display: flex; gap: 4px; }
   .tabs button {
@@ -121,9 +120,9 @@
   .msg.bot pre { background: var(--surface); border: 1px solid var(--border); padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
   .msg.bot pre code { background: none; padding: 0; font-size: 13px; line-height: 1.6; }
   .msg.bot blockquote { border-left: 2px solid var(--border2); padding-left: 14px; margin: 12px 0; color: var(--muted); font-style: italic; }
-  .msg.bot h1, .msg.bot h2, .msg.bot h3 { font: 500 21px/1.35 var(--serif); margin: 20px 0 8px; }
+  .msg.bot h1, .msg.bot h2, .msg.bot h3 { font: 500 24px/1.35 var(--serif); margin: 20px 0 8px; }
   .msg.bot h1:first-child, .msg.bot h2:first-child, .msg.bot h3:first-child { margin-top: 0; }
-  .msg.bot table { border-collapse: collapse; margin: 12px 0; font-size: 15px; }
+  .msg.bot table { border-collapse: collapse; margin: 12px 0; font-size: 16px; }
   .msg.bot th, .msg.bot td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
 
   .thinking { font-family: var(--mono); font-size: 13px; color: var(--dim); }
@@ -147,19 +146,19 @@
   }
   .search-input:focus-within { border-color: var(--border2); }
   .search-input input {
-    border: 0; background: none; padding: 4px 0; flex: 1; font-size: 15px;
+    border: 0; background: none; padding: 4px 0; flex: 1; font-size: 17px;
     font-family: var(--serif); outline: none;
   }
   .chat-input-row { display: flex; gap: 10px; align-items: center; }
   .chat-input:focus-within { border-color: var(--border2); }
   .chat-input textarea {
-    border: 0; background: none; padding: 4px 0; flex: 1; font-size: 15px;
+    border: 0; background: none; padding: 4px 0; flex: 1; font-size: 17px;
     font-family: var(--serif); resize: none; max-height: 180px; line-height: 1.5;
   }
   .chat-input textarea:focus { outline: none; }
   .chat-input-row .btn-icon { width: 36px; height: 36px; flex-shrink: 0; }
 
-  .srcs { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 15px; }
+  .srcs { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 16px; }
   .srcs strong { display: block; color: var(--dim); text-transform: uppercase; letter-spacing: .7px; font-size: 10.5px; margin-bottom: 8px; }
   .srcs ol { margin: 0; padding-left: 22px; color: var(--muted); }
   .srcs li { margin-bottom: 4px; }
@@ -189,7 +188,7 @@
   .hit.sel { background: linear-gradient(90deg, var(--surface2), transparent 80%); }
   .hit.sel .rank { color: var(--text); }
   .hit-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; overflow-wrap: break-word; }
-  .hit-head a { font: 500 20px/1.35 var(--serif); overflow-wrap: break-word; word-break: break-word; }
+  .hit-head a { font: 500 23px/1.35 var(--serif); overflow-wrap: break-word; word-break: break-word; }
   .rank { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
   .count { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
   .chunk { margin-top: 12px; }
@@ -222,9 +221,9 @@
   .tbl tr:last-child td { border-bottom: 0; }
   .tbl td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 
-  .empty { color: var(--dim); text-align: center; padding: 32px 0; font-size: 15px; font-style: italic; }
+  .empty { color: var(--dim); text-align: center; padding: 32px 0; font-size: 16px; font-style: italic; }
 
-  .about-body { font-size: 16px; color: var(--muted); line-height: 1.7; }
+  .about-body { font-size: 18px; color: var(--muted); line-height: 1.65; }
   .about-body p { margin: 0 0 10px; }
   .about-links { display: flex; gap: 12px; align-items: center; font-family: var(--mono); font-size: 13px; }
   .about-links .dim { color: var(--dim); }
@@ -314,9 +313,9 @@
   }
 
   @media (max-width: 640px) {
-    body { font-size: 17px; }
+    body { font-size: 19px; }
     .wrap { padding: 32px 16px 140px; }
-    header h1 { font-size: 27px; }
+    header h1 { font-size: 30px; }
     .msg.user { max-width: 92%; }
     .row { flex-direction: column; }
     .row > * { min-width: 100%; }
@@ -335,7 +334,7 @@
 <body>
 <div class="wrap">
 <header>
-    <h1>fathom-mcp</h1>
+    <h1>docs-mcp</h1>
     <div class="tabs">
       <button id="tabChat" class="on" type="button">chat</button>
       <button id="tabRag" type="button">search & sources</button>
@@ -452,7 +451,7 @@
         <button class="btn" id="folderBtn">index folder</button>
         <span id="folderStatus" class="status"></span>
       </div>
-      <div class="hint" style="margin-top:8px">local server only — the path must be accessible from the machine running fathom</div>
+      <div class="hint" style="margin-top:8px">local server only — the path must be accessible from the machine running docs-mcp</div>
     </div>
 
     <div class="ingest-panel" id="ingestDeps">
@@ -519,16 +518,16 @@
     <div class="about-body">
       <p>Documentation RAG system: crawl a docs site, upload files, or index a local folder — then semantic search and chat with your docs via MCP, REST API, or web UI.</p>
       <p class="about-links">
-        <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a>
+        <a href="https://github.com/veer-mehta/docs-mcp" target="_blank" rel="noopener">github</a>
         <span class="dim">·</span>
-        <a href="https://pypi.org/project/fathom-mcp/" target="_blank" rel="noopener">pypi</a>
+        <a href="https://pypi.org/project/docs-mcp/" target="_blank" rel="noopener">pypi</a>
         <span class="dim">·</span>
         <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">mcp protocol</a>
       </p>
     </div>
   </section>
 </div>
-<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer mehta</a> · <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a></footer>
+<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer mehta</a> · <a href="https://github.com/veer-mehta/docs-mcp" target="_blank" rel="noopener">github</a></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -581,7 +580,7 @@ $("tabRag").addEventListener("click", () => showView("rag"));
 $("tabAbout").addEventListener("click", () => showView("about"));
 
 /* ---------- chat persistence ---------- */
-const CHAT_KEY = "fathom_chat";
+const CHAT_KEY = "docs_mcp_chat";
 const CHAT_MAX = 50;
 const THINKING = '<span class="thinking">thinking…</span>';
 const GREETING = 'Ask anything about the indexed docs — try <code>"how do I install pydantic?"</code>';
