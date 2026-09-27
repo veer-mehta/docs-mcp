@@ -15,7 +15,7 @@ from docs_mcp import __version__
 from docs_mcp.config import settings
 from docs_mcp.doc_finder import resolve_dependencies
 from docs_mcp.index import DocsIndex, shared_index
-from docs_mcp.jobs import JOBS, ingest_or_submit
+from docs_mcp.jobs import JOBS, Job, ingest_or_submit
 from docs_mcp.llm import answer_question
 
 logger = logging.getLogger(__name__)
@@ -121,8 +121,10 @@ async def delete_source(source_id: str, index: DocsIndex = Depends(shared_index)
 
 @app.post("/ingest")
 async def ingest(payload: IngestPayload, index: DocsIndex = Depends(shared_index)):
-    body, status = await ingest_or_submit(index, **payload.model_dump())
-    return JSONResponse(body, status_code=status)
+    outcome = await ingest_or_submit(index, **payload.model_dump())
+    if isinstance(outcome, Job):
+        return JSONResponse({"job_id": outcome.id, "status": outcome.status, "poll": f"/jobs/{outcome.id}"}, status_code=202)
+    return asdict(outcome)
 
 
 @app.post("/upload")

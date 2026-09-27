@@ -5,7 +5,7 @@ import logging
 import sys
 import tempfile
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 from docs_mcp.config import settings
@@ -25,6 +25,23 @@ class IngestResult:
     errors: int
     pages_unchanged: int = 0
     pages_removed: int = 0
+
+
+def _page_rows(provider, source_id: str, url: str, title: str | None, markdown: str, page_hash: str) -> list[dict]:
+    return [
+        {
+            "source_id": source_id,
+            "url": url,
+            "title": title,
+            "content": chunk.content,
+            "heading_path": chunk.heading_path,
+            "chunk_index": index,
+            "provider": provider.name,
+            "metadata": {},
+            "content_hash": page_hash,
+        }
+        for index, chunk in enumerate(chunk_markdown(markdown))
+    ]
 
 
 async def _flush_pending(provider, db, pending, result):
@@ -50,7 +67,7 @@ async def ingest_documentation(
     prune_missing: bool = False,
     lang: str = "",
     sitemap: bool = False,
-) -> dict:
+) -> IngestResult:
     source_id = f"{name}@{version}"
     known_hashes = await db.get_source_hashes(source_id)
     seen_urls: set[str] = set()
@@ -107,24 +124,11 @@ async def ingest_documentation(
                 result.pages_unchanged += 1
                 report()
                 continue
-            chunks = chunk_markdown(markdown)
-            if not chunks:
+            rows = _page_rows(provider, source_id, url, page.get("title"), markdown, page_hash)
+            if not rows:
                 result.errors += 1
                 continue
-            for index, chunk in enumerate(chunks):
-                pending.append(
-                    {
-                        "source_id": source_id,
-                        "url": url,
-                        "title": page.get("title"),
-                        "content": chunk.content,
-                        "heading_path": chunk.heading_path,
-                        "chunk_index": index,
-                        "provider": provider.name,
-                        "metadata": {},
-                        "content_hash": page_hash,
-                    }
-                )
+            pending.extend(rows)
             result.pages_indexed += 1
             report()
             if len(pending) >= 8:
@@ -141,7 +145,7 @@ async def ingest_documentation(
         elif prune_missing and seen_urls:
             result.pages_removed = await db.delete_stale_pages(source_id, seen_urls)
 
-    return asdict(result)
+    return result
 
 
 async def ingest_files(db: Database, provider, name: str, files: list[tuple[str, bytes]]) -> IngestResult:
@@ -161,23 +165,8 @@ async def ingest_files(db: Database, provider, name: str, files: list[tuple[str,
             if not markdown:
                 result.errors += 1
                 continue
-            chunks = chunk_markdown(markdown)
-            url = f"file:///{filename}"
             page_hash = hashlib.sha256(markdown.encode()).hexdigest()
-            for index, chunk in enumerate(chunks):
-                pending.append(
-                    {
-                        "source_id": source_id,
-                        "url": url,
-                        "title": filename,
-                        "content": chunk.content,
-                        "heading_path": chunk.heading_path,
-                        "chunk_index": index,
-                        "provider": provider.name,
-                        "metadata": {},
-                        "content_hash": page_hash,
-                    }
-                )
+            pending.extend(_page_rows(provider, source_id, f"file:///{filename}", filename, markdown, page_hash))
             result.pages_indexed += 1
             if len(pending) >= 8:
                 await _flush_pending(provider, db, pending, result)

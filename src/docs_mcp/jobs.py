@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import uuid
-from dataclasses import dataclass, field, fields
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 
 from docs_mcp.index import DocsIndex
@@ -99,10 +99,8 @@ def submit_ingest(
     lang: str = "",
     sitemap: bool = False,
     registry: JobRegistry = JOBS,
-    _runner=None,
 ) -> Job:
     async def _run(job: Job) -> None:
-        runner = _runner
         job.status = "running"
         job.started_at = datetime.now(timezone.utc)
 
@@ -115,22 +113,18 @@ def submit_ingest(
             job.pages_removed = result.pages_removed
 
         try:
-            if runner is not None:
-                job.result = await runner(
-                    name=job.name, version=job.version, base_url=job.base_url, max_depth=job.max_depth, max_pages=job.max_pages, prune_missing=job.prune_missing, on_progress=on_progress
-                )
-            else:
-                job.result = await index.ingest_site(
-                    name=job.name,
-                    version=job.version,
-                    base_url=job.base_url,
-                    max_depth=job.max_depth,
-                    max_pages=job.max_pages,
-                    prune_missing=job.prune_missing,
-                    lang=job.lang,
-                    sitemap=job.sitemap,
-                    on_progress=on_progress,
-                )
+            result = await index.ingest_site(
+                name=job.name,
+                version=job.version,
+                base_url=job.base_url,
+                max_depth=job.max_depth,
+                max_pages=job.max_pages,
+                prune_missing=job.prune_missing,
+                lang=job.lang,
+                sitemap=job.sitemap,
+                on_progress=on_progress,
+            )
+            job.result = asdict(result)
             job.status = "done"
         except Exception as exc:
             logger.exception("ingest job %s failed", job.id)
@@ -144,10 +138,7 @@ def submit_ingest(
     return job
 
 
-async def ingest_or_submit(index: DocsIndex, *, name: str, version: str, base_url: str, background: bool = False, **kwargs) -> tuple[dict, int]:
-    """Returns (body_dict, http_status)."""
+async def ingest_or_submit(index: DocsIndex, *, name: str, version: str, base_url: str, background: bool = False, **kwargs) -> Job | IngestResult:
     if background:
-        job = submit_ingest(index, name=name, version=version, base_url=base_url, **kwargs)
-        return {"job_id": job.id, "status": job.status, "poll": f"/jobs/{job.id}"}, 202
-    result = await index.ingest_site(name=name, version=version, base_url=base_url, **kwargs)
-    return result, 200
+        return submit_ingest(index, name=name, version=version, base_url=base_url, **kwargs)
+    return await index.ingest_site(name=name, version=version, base_url=base_url, **kwargs)
