@@ -4,19 +4,19 @@ from docs_mcp import pipeline
 from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.pipeline import IngestResult
-from docs_mcp.storage.db import Database, SearchHit, source_pattern
+from docs_mcp.store import ChunkStore, SearchHit, source_pattern
 
 SEARCH_MODES = ("hybrid", "vector", "keyword")
 
 
 class DocsIndex:
-    def __init__(self, store: Database, embedder) -> None:
+    def __init__(self, store: ChunkStore, embedder) -> None:
         self.store = store
         self.embedder = embedder
 
     @classmethod
     async def open(cls, dsn: str | None = None) -> "DocsIndex":
-        index = cls(Database(dsn or settings.database_url), get_embedding_provider())
+        index = cls(ChunkStore(dsn or settings.database_url), get_embedding_provider())
         await index.store.ensure_schema(index.embedder.dimensions)
         return index
 

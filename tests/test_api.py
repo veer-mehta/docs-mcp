@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from docs_mcp import api
+from docs_mcp.adapters import http_api as api
 from docs_mcp.index import DocsIndex, shared_index
 from docs_mcp.jobs import JobRegistry
 from docs_mcp.pipeline import IngestResult

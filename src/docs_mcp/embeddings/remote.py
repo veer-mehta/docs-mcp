@@ -11,7 +11,7 @@ MAX_RETRIES = 5
 INITIAL_BACKOFF = 4.0
 
 
-class APIEmbeddingProvider:
+class RemoteEmbeddingProvider:
     def __init__(self) -> None:
         self._api_key = settings.embedding_api_key
         self._base_url = settings.embedding_base_url.rstrip("/")

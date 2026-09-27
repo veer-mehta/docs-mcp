@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from docs_mcp.storage.db import Database
+from docs_mcp.store import ChunkStore
 
 pytestmark = pytest.mark.integration
 
@@ -26,7 +26,7 @@ class FakeProvider:
 
 @pytest.fixture()
 async def db():
-    database = Database(DSN, table=TABLE)
+    database = ChunkStore(DSN, table=TABLE)
     yield database
     await database.drop_table()
     await database.close()

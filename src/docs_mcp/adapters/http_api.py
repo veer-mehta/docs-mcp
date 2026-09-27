@@ -13,14 +13,14 @@ from pydantic import BaseModel
 
 from docs_mcp import __version__
 from docs_mcp.config import settings
-from docs_mcp.doc_finder import resolve_dependencies
+from docs_mcp.deps.registry import resolve_dependencies
 from docs_mcp.index import DocsIndex, shared_index
 from docs_mcp.jobs import JOBS, Job, ingest_or_submit
-from docs_mcp.llm import answer_question
+from docs_mcp.answer import answer_question
 
 logger = logging.getLogger(__name__)
 
-INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+INDEX_HTML = Path(__file__).parent.parent / "static" / "index.html"
 
 
 @asynccontextmanager

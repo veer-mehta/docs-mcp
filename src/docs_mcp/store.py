@@ -63,7 +63,7 @@ def to_vector_literal(vector: list[float]) -> str:
     return "[" + ",".join(f"{v:.7f}" for v in vector) + "]"
 
 
-class Database:
+class ChunkStore:
     def __init__(self, dsn: str, table: str = "documents") -> None:
         self._dsn = dsn
         self._table = table

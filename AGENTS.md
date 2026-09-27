@@ -5,7 +5,8 @@ Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFa
 
 ## Commands
 
-- Tests: `.venv/bin/pytest` (unit tests, no external services needed)
+- Tests: `.venv/bin/pytest` (`tests/test_store.py` is marked `integration` and needs the
+  compose Postgres; skip it with `-m "not integration"`)
 - API + web UI: `docs-mcp-api` → http://127.0.0.1:8000
 - MCP server: `docs-mcp-server` (stdio)
 - Crawler CLI: `docs-mcp-crawl --url <url>`
@@ -30,9 +31,9 @@ Configuration lives in `.env` (see `.env.example`). Architecture is described in
 ## Conventions
 
 No comments or docstrings unless their absence causes real damage. Intentional
-exceptions: the GPU-OOM note in `embeddings/local_provider.py`, the
+exceptions: the GPU-OOM note in `embeddings/local.py`, the
 prune-only-on-clean-crawl warning in `pipeline.py`, and the MCP tool docstrings in
-`server.py` — those are protocol payloads sent to clients, not documentation.
+`adapters/mcp_server.py` — those are protocol payloads sent to clients, not documentation.
 
 ## Agent skills
 
