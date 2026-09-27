@@ -15,3 +15,5 @@ crawl_output/
 .vscode/
 .remember/
 docs/
+CLAUDE.md
+AGENTS.md
