@@ -495,10 +495,6 @@
         <span class="about-value" id="aboutPython">—</span>
       </div>
       <div class="about-row">
-        <span class="about-label">Database</span>
-        <span class="about-value" id="aboutDatabase">—</span>
-      </div>
-      <div class="about-row">
         <span class="about-label">Indexed Sources</span>
         <span class="about-value" id="aboutSources">—</span>
       </div>
@@ -1131,7 +1127,6 @@ async function loadAbout() {
     set("aboutEmbeddingDims", d.embedding_dims);
     set("aboutLlmModel", d.llm_model);
     set("aboutPython", d.python);
-    set("aboutDatabase", d.database);
     set("aboutSources", d.sources);
     set("aboutPages", d.pages);
     set("aboutChunks", d.chunks);
@@ -1146,7 +1141,7 @@ async function loadAbout() {
       chatStatus.textContent = parts.length ? parts.join(" · ") : "";
     }
   } catch {
-    const els = ["aboutEmbeddingModel","aboutEmbeddingDims","aboutLlmModel","aboutPython","aboutDatabase","aboutSources","aboutPages","aboutChunks"];
+    const els = ["aboutEmbeddingModel","aboutEmbeddingDims","aboutLlmModel","aboutPython","aboutSources","aboutPages","aboutChunks"];
     els.forEach(id => { const el = $(id); if (el) el.textContent = "failed to load"; });
   }
 }

@@ -79,7 +79,6 @@ async def about():
         "embedding_model": provider.name,
         "embedding_dims": provider.dimensions,
         "llm_model": settings.llm_model or "(not configured)",
-        "database": settings.database_url.split("@")[-1] if "@" in settings.database_url else settings.database_url,
         "sources": len(rows),
         "pages": total_pages,
         "chunks": total_chunks,
