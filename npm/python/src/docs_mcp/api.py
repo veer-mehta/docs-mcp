@@ -36,7 +36,7 @@ async def lifespan(app):
     await db.close()
 
 
-app = FastAPI(title="fathom-mcp", version=__version__, lifespan=lifespan)
+app = FastAPI(title="docs-mcp", version=__version__, lifespan=lifespan)
 
 
 class IngestPayload(BaseModel):

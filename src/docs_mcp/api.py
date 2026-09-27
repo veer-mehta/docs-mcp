@@ -103,7 +103,7 @@ async def lifespan(app):
     await index.close()
 
 
-app = FastAPI(title="fathom-mcp", version=__version__, lifespan=lifespan)
+app = FastAPI(title="docs-mcp", version=__version__, lifespan=lifespan)
 
 
 class IngestPayload(BaseModel):
@@ -132,6 +132,11 @@ async def validation_error(_request: Request, _exc: RequestValidationError):
 @app.get("/")
 async def home():
     return FileResponse(INDEX_HTML)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "version": __version__}
 
 
 @app.get("/about")

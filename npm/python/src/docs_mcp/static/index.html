@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>fathom</title>
+<title>docs-mcp</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #000; --surface: #111; --surface2: #191919;
     --border: #222; --border2: #333;
     --text: #ececec; --muted: #8b8b8b; --dim: #5a5a5a;
     --green: #4ade80; --red: #f87171;
-    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -335,7 +335,7 @@
 <body>
 <div class="wrap">
 <header>
-    <h1>fathom-mcp</h1>
+    <h1>docs-mcp</h1>
     <div class="tabs">
       <button id="tabChat" class="on" type="button">chat</button>
       <button id="tabRag" type="button">search & sources</button>
@@ -452,7 +452,7 @@
         <button class="btn" id="folderBtn">index folder</button>
         <span id="folderStatus" class="status"></span>
       </div>
-      <div class="hint" style="margin-top:8px">local server only — the path must be accessible from the machine running fathom</div>
+      <div class="hint" style="margin-top:8px">local server only — the path must be accessible from the machine running docs-mcp</div>
     </div>
 
     <div class="ingest-panel" id="ingestDeps">
@@ -519,16 +519,16 @@
     <div class="about-body">
       <p>Documentation RAG system: crawl a docs site, upload files, or index a local folder — then semantic search and chat with your docs via MCP, REST API, or web UI.</p>
       <p class="about-links">
-        <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a>
+        <a href="https://github.com/veer-mehta/docs-mcp" target="_blank" rel="noopener">github</a>
         <span class="dim">·</span>
-        <a href="https://pypi.org/project/fathom-mcp/" target="_blank" rel="noopener">pypi</a>
+        <a href="https://pypi.org/project/docs-mcp/" target="_blank" rel="noopener">pypi</a>
         <span class="dim">·</span>
         <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">mcp protocol</a>
       </p>
     </div>
   </section>
 </div>
-<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer mehta</a> · <a href="https://github.com/veer-mehta/fathom-mcp" target="_blank" rel="noopener">github</a></footer>
+<footer id="siteFooter">created by <a href="https://veermehta.dev" target="_blank" rel="noopener">veer mehta</a> · <a href="https://github.com/veer-mehta/docs-mcp" target="_blank" rel="noopener">github</a></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -581,7 +581,7 @@ $("tabRag").addEventListener("click", () => showView("rag"));
 $("tabAbout").addEventListener("click", () => showView("about"));
 
 /* ---------- chat persistence ---------- */
-const CHAT_KEY = "fathom_chat";
+const CHAT_KEY = "docs_mcp_chat";
 const CHAT_MAX = 50;
 const THINKING = '<span class="thinking">thinking…</span>';
 const GREETING = 'Ask anything about the indexed docs — try <code>"how do I install pydantic?"</code>';
