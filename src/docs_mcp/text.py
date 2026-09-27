@@ -79,6 +79,7 @@ def file_to_markdown(path: Path, filename: str) -> str | None:
 
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 
 MAX_CHUNK_CHARS = 3500
 MIN_SECTION_CHARS = 200
@@ -102,8 +103,12 @@ def split_sections(markdown: str) -> list[tuple[list[str], str]]:
         if text:
             sections.append((list(path), text))
 
+    fence = ""
     for line in markdown.splitlines():
-        match = HEADING_RE.match(line)
+        fence_match = FENCE_RE.match(line)
+        if fence_match and (not fence or fence_match.group(1)[0] == fence):
+            fence = "" if fence else fence_match.group(1)[0]
+        match = None if fence or fence_match else HEADING_RE.match(line)
         if match:
             flush()
             body = []
