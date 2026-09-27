@@ -43,7 +43,7 @@ async def add_documentation(name: str, version: str, base_url: str, max_depth: i
     if background:
         job = submit_ingest(db, name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
         return json.dumps({"job_id": job.id, "source_id": job.source_id, "status": job.status, "note": f'Poll get_ingest_status(job_id="{job.id}") until status is done or failed.'})
-    result = await ingest_documentation(db, name, version, base_url, max_depth=max_depth, max_pages=max_pages, lang=lang, sitemap=sitemap)
+    result = await ingest_documentation(db, name, version, base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
     return json.dumps(result)
 
 

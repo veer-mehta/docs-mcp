@@ -1,3 +1,7 @@
+from functools import cache
+
+
+@cache
 def get_embedding_provider():
     from docs_mcp.config import settings
 
