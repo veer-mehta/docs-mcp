@@ -17,7 +17,7 @@ def parse_requirements_txt(content: str) -> list[Dependency]:
         line = line.strip()
         if not line or line.startswith("#") or line.startswith("-"):
             continue
-        match = re.match(r'^([a-zA-Z0-9_.-]+)\s*([=<>!~]=?\s*\S+)?', line)
+        match = re.match(r"^([a-zA-Z0-9_.-]+)\s*([=<>!~]=?\s*\S+)?", line)
         if match:
             name = match.group(1)
             ver = (match.group(2) or "").strip().lstrip("=<>!~").strip() or None
@@ -30,7 +30,7 @@ def parse_pyproject_toml(content: str) -> list[Dependency]:
     deps = []
 
     for dep_str in data.get("project", {}).get("dependencies", []):
-        match = re.match(r'^([a-zA-Z0-9_.-]+)\s*(\[.*?\])?\s*([=<>!~]=?\s*\S+)?', dep_str)
+        match = re.match(r"^([a-zA-Z0-9_.-]+)\s*(\[.*?\])?\s*([=<>!~]=?\s*\S+)?", dep_str)
         if match:
             name = match.group(1)
             ver = (match.group(3) or "").strip().lstrip("=<>!~").strip() or None
@@ -56,7 +56,7 @@ def parse_package_json(content: str) -> list[Dependency]:
     deps = []
     for section in ("dependencies", "devDependencies", "peerDependencies"):
         for name, ver_str in data.get(section, {}).items():
-            ver = re.sub(r'^[\^~>=<*]+', '', ver_str).strip() or None
+            ver = re.sub(r"^[\^~>=<*]+", "", ver_str).strip() or None
             deps.append(Dependency(name=name, version=ver, ecosystem="npm"))
     return deps
 
@@ -74,12 +74,7 @@ def parse_package_lock(content: str) -> list[Dependency]:
     return deps
 
 
-PARSERS = {
-    "requirements.txt": parse_requirements_txt,
-    "pyproject.toml": parse_pyproject_toml,
-    "package.json": parse_package_json,
-    "package-lock.json": parse_package_lock,
-}
+PARSERS = {"requirements.txt": parse_requirements_txt, "pyproject.toml": parse_pyproject_toml, "package.json": parse_package_json, "package-lock.json": parse_package_lock}
 
 
 def parse_dep_file(filename: str, content: str) -> list[Dependency]:

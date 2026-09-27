@@ -11,34 +11,20 @@ from pathlib import Path
 from docs_mcp.config import settings
 from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.processing.chunker import chunk_markdown
-from docs_mcp.processing.extract import html_to_markdown, file_to_markdown
+from docs_mcp.processing.extract import file_to_markdown, html_to_markdown
 from docs_mcp.storage.db import Database, source_pattern
 
 logger = logging.getLogger(__name__)
 
 
-async def embed_and_search(
-    db: Database,
-    query: str,
-    *,
-    name: str | None = None,
-    version: str | None = None,
-    k: int = 5,
-    mode: str = "hybrid",
-    min_similarity: float | None = None,
-):
+async def embed_and_search(db: Database, query: str, *, name: str | None = None, version: str | None = None, k: int = 5, mode: str = "hybrid", min_similarity: float | None = None):
     provider = get_embedding_provider()
     await db.ensure_schema(provider.dimensions)
     vectors = await provider.embed([query])
-    kwargs: dict = dict(
-        query_text=query,
-        pattern=source_pattern(name, version),
-        k=max(1, min(k, 20)),
-        mode=mode,
-    )
-    if min_similarity is not None:
-        kwargs["min_similarity"] = min_similarity
-    return await db.search(vectors[0], **kwargs)
+    if min_similarity is None:
+        return await db.search(vectors[0], query_text=query, pattern=source_pattern(name, version), k=max(1, min(k, 20)), mode=mode)
+    return await db.search(vectors[0], query_text=query, pattern=source_pattern(name, version), k=max(1, min(k, 20)), mode=mode, min_similarity=min_similarity)
+
 
 @dataclass
 class IngestResult:
@@ -102,20 +88,9 @@ async def ingest_documentation(
             cmd.extend(["--lang", lang])
         if sitemap:
             cmd.append("--sitemap")
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=stderr_file,
-            limit=64 * 1024 * 1024,
-        )
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=stderr_file, limit=64 * 1024 * 1024)
 
-        result = IngestResult(
-            source_id=source_id,
-            pages_crawled=0,
-            pages_indexed=0,
-            chunks_indexed=0,
-            errors=0,
-        )
+        result = IngestResult(source_id=source_id, pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=0)
         report()
         pending: list[dict] = []
 
@@ -180,22 +155,12 @@ async def ingest_documentation(
     return asdict(result)
 
 
-async def ingest_files(
-    db: Database,
-    name: str,
-    files: list[tuple[str, bytes]],
-) -> IngestResult:
+async def ingest_files(db: Database, name: str, files: list[tuple[str, bytes]]) -> IngestResult:
     source_id = f"{name}@latest"
     provider = get_embedding_provider()
     await db.ensure_schema(provider.dimensions)
 
-    result = IngestResult(
-        source_id=source_id,
-        pages_crawled=0,
-        pages_indexed=0,
-        chunks_indexed=0,
-        errors=0,
-    )
+    result = IngestResult(source_id=source_id, pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=0)
     pending: list[dict] = []
 
     for filename, content in files:
@@ -239,18 +204,10 @@ async def ingest_files(
 SUPPORTED_EXTS = {".html", ".htm", ".md", ".txt", ".pdf"}
 
 
-async def ingest_folder(
-    db: Database,
-    name: str,
-    folder_path: str,
-    recursive: bool = True,
-) -> IngestResult:
+async def ingest_folder(db: Database, name: str, folder_path: str, recursive: bool = True) -> IngestResult:
     root = Path(folder_path).expanduser().resolve()
     if not root.is_dir():
-        return IngestResult(
-            source_id=f"{name}@latest",
-            pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=1,
-        )
+        return IngestResult(source_id=f"{name}@latest", pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=1)
 
     files: list[tuple[str, bytes]] = []
     seen_inodes: set[int] = set()

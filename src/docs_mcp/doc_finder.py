@@ -10,10 +10,7 @@ logger = logging.getLogger(__name__)
 PYPI_API = "https://pypi.org/pypi/{name}/json"
 NPM_API = "https://registry.npmjs.org/{name}"
 
-LANGUAGE_DOCS = {
-    "python": "https://docs.python.org/3/",
-    "node": "https://nodejs.org/docs/latest/api/",
-}
+LANGUAGE_DOCS = {"python": "https://docs.python.org/3/", "node": "https://nodejs.org/docs/latest/api/"}
 
 JS_RUNTIME_LIBS = {"node", "npm", "core-js", "tslib", "typescript", "webpack", "vite", "esbuild", "rollup", "parcel"}
 PYTHON_STDLIB = {"pip", "setuptools", "wheel", "build", "twine"}
@@ -75,7 +72,7 @@ async def _find_npm_docs(name: str) -> str | None:
                 return homepage
 
             if repo_url:
-                gh_match = re.search(r'github\.com[/:]([^/]+/[^/.]+)', repo_url)
+                gh_match = re.search(r"github\.com[/:]([^/]+/[^/.]+)", repo_url)
                 if gh_match:
                     repo_path = gh_match.group(1).rstrip(".git")
                     return f"https://github.com/{repo_path}"
@@ -119,9 +116,7 @@ def detect_language(deps: list[Dependency]) -> str | None:
     return None
 
 
-async def resolve_dependencies(
-    filename: str, content: str, max_deps: int = 20
-) -> dict:
+async def resolve_dependencies(filename: str, content: str, max_deps: int = 20) -> dict:
     deps = parse_dep_file(filename, content)
     if not deps:
         raise ValueError(f"could not parse dependencies from {filename}")
@@ -131,13 +126,9 @@ async def resolve_dependencies(
     for dep in deps:
         doc_url = await find_doc_url(dep)
         if doc_url:
-            results.append(
-                {"name": dep.name, "version": dep.version, "url": doc_url, "ecosystem": dep.ecosystem}
-            )
+            results.append({"name": dep.name, "version": dep.version, "url": doc_url, "ecosystem": dep.ecosystem})
     if lang and lang in LANGUAGE_DOCS:
-        results.append(
-            {"name": lang, "version": "latest", "url": LANGUAGE_DOCS[lang], "ecosystem": "language"}
-        )
+        results.append({"name": lang, "version": "latest", "url": LANGUAGE_DOCS[lang], "ecosystem": "language"})
     if not results:
         raise ValueError("no documentation URLs found")
     return {"dependencies": results, "language": lang, "total": len(results)}

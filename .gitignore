@@ -11,3 +11,6 @@ dist/
 build/
 crawl_output/
 .crawl-cache/
+.remember/
+docs/
+.vscode/
