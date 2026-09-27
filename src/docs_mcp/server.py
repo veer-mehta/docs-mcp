@@ -10,7 +10,7 @@ from docs_mcp.index import JOBS, Job, ingest_or_submit, shared_index
 
 logger = logging.getLogger(__name__)
 
-mcp = MCPServer("fathom-mcp")
+mcp = MCPServer("docs-mcp")
 
 
 @mcp.tool()

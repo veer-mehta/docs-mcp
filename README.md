@@ -1,4 +1,4 @@
-# fathom-mcp
+# docs-mcp
 
 Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFace)
 → store in Postgres+pgvector → semantic search via MCP server, REST API, and web UI.
@@ -6,7 +6,7 @@ Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFa
 ## Demo
 <img width="2559" height="1487" alt="image" src="https://github.com/user-attachments/assets/0951996f-7b78-487c-bf04-6d965198e589" />
 
-live at https://fathom-mcp.veermehta.dev
+live at https://docs-mcp.veermehta.dev
 
 ## Architecture
 
@@ -25,7 +25,7 @@ flowchart LR
 ## Quick start
 
 ```bash
-git clone ... fathom-mcp && cd fathom-mcp
+git clone ... docs-mcp && cd docs-mcp
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[local]"
 docker compose up -d
@@ -36,8 +36,8 @@ cp .env.example .env              # set LLM_API_KEY
 ## npm (no clone needed)
 
 ```bash
-npx @fathom-mcp/server            # first run installs ~5GB deps, then instant
-npx @fathom-mcp/server --api      # REST API + web UI
+npx @docs-mcp/server            # first run installs ~5GB deps, then instant
+npx @docs-mcp/server --api      # REST API + web UI
 ```
 
 ## MCP tools
@@ -54,6 +54,7 @@ npx @fathom-mcp/server --api      # REST API + web UI
 | `POST /upload-folder` | Index a local folder |
 | `GET /llm-chat?q=...` | Chat with docs |
 | `GET /about` | System info |
+| `GET /health` | Liveness probe |
 | `GET /docs` | Interactive OpenAPI documentation |
 | `GET /openapi.json` | OpenAPI schema |
 
@@ -64,20 +65,20 @@ Add to `~/.config/opencode/opencode.jsonc`:
 ```json
 {
   "mcp": {
-    "fathom-mcp": {
+    "docs-mcp": {
       "type": "local",
-      "command": ["/path/to/fathom-mcp/.venv/bin/python", "-m", "docs_mcp.server"]
+      "command": ["/path/to/docs-mcp/.venv/bin/python", "-m", "docs_mcp.server"]
     }
   }
 }
 ```
 
-Replace `/path/to/fathom-mcp` with your actual clone path. You can verify it works with:
+Replace `/path/to/docs-mcp` with your actual clone path. You can verify it works with:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /path/to/fathom-mcp/.venv/bin/python -m docs_mcp.server
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /path/to/docs-mcp/.venv/bin/python -m docs_mcp.server
 ```
 
 ## Config
 
-`~/.fathom-mcp/.env` — set `EMBEDDING_PROVIDER=api` + `EMBEDDING_API_KEY` for remote embeddings (Jina, OpenAI, etc.), or leave as `local` for HuggingFace.
+`~/.docs-mcp/.env` — set `EMBEDDING_PROVIDER=api` + `EMBEDDING_API_KEY` for remote embeddings (Jina, OpenAI, etc.), or leave as `local` for HuggingFace.

@@ -1,7 +1,7 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: fathom-mcp-postgres
+    container_name: docs-mcp-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: docs_mcp
@@ -19,7 +19,7 @@ services:
 
   api:
     build: .
-    container_name: fathom-mcp-api
+    container_name: docs-mcp-api
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
