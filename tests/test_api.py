@@ -1,8 +1,10 @@
+from dataclasses import asdict
+
 import httpx
 import pytest
 
-from docs_mcp import api
-from docs_mcp.pipeline import IngestResult
+from docs_mcp import api, index
+from docs_mcp.index import IngestResult
 
 
 @pytest.fixture()
@@ -14,7 +16,7 @@ async def client():
 
 def test_openapi_exposes_api_contract():
     schema = api.app.openapi()
-    assert schema["info"]["title"] == "fathom-mcp"
+    assert schema["info"]["title"] == "docs-mcp"
     assert set(schema["paths"]) == {"/", "/about", "/search", "/sources", "/sources/{source_id}", "/ingest", "/upload", "/upload-folder", "/ingest-deps", "/jobs", "/jobs/{job_id}", "/llm-chat"}
 
 
@@ -37,13 +39,13 @@ async def test_ingest_body_is_validated_and_forwarded(client, monkeypatch):
 
     async def fake_ingest_or_submit(_db, **kwargs):
         captured.update(kwargs)
-        return {"status": "ok"}, 200
+        return IngestResult("fw@latest", 1, 1, 1, 0)
 
     monkeypatch.setattr(api, "ingest_or_submit", fake_ingest_or_submit)
     response = await client.post("/ingest", json={"name": "fw", "version": "1.0", "base_url": "https://fw.dev"})
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == asdict(IngestResult("fw@latest", 1, 1, 1, 0))
     assert captured == {"name": "fw", "version": "1.0", "base_url": "https://fw.dev", "background": False, "max_depth": None, "max_pages": None, "prune_missing": False, "lang": "", "sitemap": False}
 
 
@@ -60,14 +62,14 @@ async def test_missing_uploads_keep_existing_errors(client):
 async def test_multipart_uploads_are_parsed(client, monkeypatch):
     captured = {}
 
-    async def fake_ingest_files(_db, *, name, files):
+    async def fake_ingest_files(_self, name, files):
         captured.update(name=name, files=files)
         return IngestResult("docs@latest", 1, 1, 1, 0)
 
     async def fake_resolve_dependencies(filename, content, max_deps=20):
         return {"filename": filename, "content": content, "max_deps": max_deps}
 
-    monkeypatch.setattr(api, "ingest_files", fake_ingest_files)
+    monkeypatch.setattr(index.DocsIndex, "ingest_files", fake_ingest_files)
     monkeypatch.setattr(api, "resolve_dependencies", fake_resolve_dependencies)
 
     response = await client.post("/upload", data={"name": "docs"}, files=[("files", ("guide.md", b"# Guide", "text/markdown"))])
