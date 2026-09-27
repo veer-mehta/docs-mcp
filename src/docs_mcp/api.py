@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, File, Form, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -14,26 +14,21 @@ from pydantic import BaseModel
 from docs_mcp import __version__
 from docs_mcp.config import settings
 from docs_mcp.doc_finder import resolve_dependencies
-from docs_mcp.embeddings import get_embedding_provider
+from docs_mcp.index import DocsIndex, shared_index
 from docs_mcp.jobs import JOBS, ingest_or_submit
 from docs_mcp.llm import answer_question
-from docs_mcp.pipeline import embed_and_search, ingest_files, ingest_folder
-from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
-db = Database(settings.database_url)
-
 
 @asynccontextmanager
 async def lifespan(app):
-    provider = get_embedding_provider()
-    await db.ensure_schema(provider.dimensions)
-    logger.info("embedding model ready: %s (%d dims)", provider.name, provider.dimensions)
+    index = await shared_index()
+    logger.info("embedding model ready: %s (%d dims)", index.embedder.name, index.embedder.dimensions)
     yield
-    await db.close()
+    await index.close()
 
 
 app = FastAPI(title="fathom-mcp", version=__version__, lifespan=lifespan)
@@ -63,14 +58,14 @@ async def validation_error(_request: Request, _exc: RequestValidationError):
 
 
 @app.get("/")
-async def index():
+async def home():
     return FileResponse(INDEX_HTML)
 
 
 @app.get("/about")
-async def about():
-    provider = get_embedding_provider()
-    rows = await db.list_sources()
+async def about(index: DocsIndex = Depends(shared_index)):
+    provider = index.embedder
+    rows = await index.sources()
     total_pages = sum(r.get("pages", 0) for r in rows)
     total_chunks = sum(r.get("chunks", 0) for r in rows)
     return {
@@ -96,21 +91,20 @@ async def search(
     version: str | None = Query(default=None),
     k: int = Query(default=5),
     min_sim: float = Query(default=0.35),
+    index: DocsIndex = Depends(shared_index),
 ):
     if not q:
         return JSONResponse({"error": "query param 'q' is required"}, status_code=400)
-    if mode not in ("hybrid", "vector", "keyword"):
-        return JSONResponse({"error": f"unknown mode: {mode} (use hybrid|vector|keyword)"}, status_code=400)
     try:
-        hits = await embed_and_search(db, q, name=name, version=version, k=k, mode=mode, min_similarity=min_sim)
+        hits = await index.search(q, name=name, version=version, k=k, mode=mode, min_similarity=min_sim)
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
     return {"query": q, "mode": mode, "hits": [asdict(hit) for hit in hits]}
 
 
 @app.get("/sources")
-async def sources():
-    rows = await db.list_sources()
+async def sources(index: DocsIndex = Depends(shared_index)):
+    rows = await index.sources()
     for row in rows:
         if isinstance(row["updated_at"], datetime):
             row["updated_at"] = row["updated_at"].isoformat()
@@ -118,21 +112,21 @@ async def sources():
 
 
 @app.delete("/sources/{source_id}")
-async def delete_source(source_id: str):
-    deleted = await db.delete_source(source_id)
+async def delete_source(source_id: str, index: DocsIndex = Depends(shared_index)):
+    deleted = await index.delete(source_id)
     if not deleted:
         return JSONResponse({"error": f"unknown source: {source_id}"}, status_code=404)
     return {"deleted": deleted, "source_id": source_id}
 
 
 @app.post("/ingest")
-async def ingest(payload: IngestPayload):
-    body, status = await ingest_or_submit(db, **payload.model_dump())
+async def ingest(payload: IngestPayload, index: DocsIndex = Depends(shared_index)):
+    body, status = await ingest_or_submit(index, **payload.model_dump())
     return JSONResponse(body, status_code=status)
 
 
 @app.post("/upload")
-async def upload(name: str = Form(default="uploaded-docs"), files: list[UploadFile] | None = File(default=None)):
+async def upload(name: str = Form(default="uploaded-docs"), files: list[UploadFile] | None = File(default=None), index: DocsIndex = Depends(shared_index)):
     if not files:
         return JSONResponse({"error": "no files provided"}, status_code=400)
     uploaded: list[tuple[str, bytes]] = []
@@ -142,15 +136,15 @@ async def upload(name: str = Form(default="uploaded-docs"), files: list[UploadFi
             uploaded.append((upload_file.filename or "uploaded-file", content))
     if not uploaded:
         return JSONResponse({"error": "no files provided"}, status_code=400)
-    result = await ingest_files(db, name=name, files=uploaded)
+    result = await index.ingest_files(name, uploaded)
     return asdict(result)
 
 
 @app.post("/upload-folder")
-async def upload_folder(payload: FolderPayload):
+async def upload_folder(payload: FolderPayload, index: DocsIndex = Depends(shared_index)):
     if not payload.path:
         return JSONResponse({"error": "missing required field: path"}, status_code=400)
-    result = await ingest_folder(db, name=payload.name, folder_path=payload.path, recursive=payload.recursive)
+    result = await index.ingest_folder(payload.name, payload.path, payload.recursive)
     return asdict(result)
 
 
@@ -180,11 +174,11 @@ async def get_job(job_id: str):
 
 
 @app.get("/llm-chat")
-async def llm_chat(q: str = Query(default="")):
+async def llm_chat(q: str = Query(default=""), index: DocsIndex = Depends(shared_index)):
     if not q:
         return JSONResponse({"error": "Missing 'q' parameter"}, status_code=400)
     try:
-        return await answer_question(db, q)
+        return await answer_question(index, q)
     except Exception as exc:
         logger.exception("Error in llm_chat endpoint")
         return JSONResponse({"error": f"Processing failed: {exc}"}, status_code=500)

@@ -5,32 +5,26 @@
 
 import asyncio
 
-from docs_mcp.config import settings
-from docs_mcp.embeddings import get_embedding_provider
-from docs_mcp.pipeline import ingest_documentation
-from docs_mcp.storage.db import Database
+from docs_mcp.index import DocsIndex
 
 
 async def main() -> None:
-    db = Database(settings.database_url)
-    provider = get_embedding_provider()
-    await db.ensure_schema(provider.dimensions)
+    index = await DocsIndex.open()
 
-    sources = await db.list_sources()
+    sources = await index.sources()
     if not any(s["source_id"] == "pydantic@2.13" for s in sources):
         print("ingesting pydantic@2.13 ...")
-        result = await ingest_documentation(db, name="pydantic", version="2.13", base_url="https://docs.pydantic.dev/latest/", max_depth=1, max_pages=4)
+        result = await index.ingest_site("pydantic", "2.13", "https://docs.pydantic.dev/latest/", max_depth=1, max_pages=4)
         print("ingest result:", result)
 
     for query in ["how do I install pydantic", "migrating from v1 to v2"]:
-        vectors = await provider.embed([query])
-        hits = await db.search(vectors[0], pattern="pydantic@%", k=2)
+        hits = await index.search(query, name="pydantic", k=2, mode="vector")
         print(f"\n{query}")
         for hit in hits:
             crumb = " > ".join(hit.heading_path)
             print(f"  {hit.similarity:.2f}  {crumb or '(root)'}  ->  {hit.url}")
 
-    await db.close()
+    await index.close()
 
 
 if __name__ == "__main__":

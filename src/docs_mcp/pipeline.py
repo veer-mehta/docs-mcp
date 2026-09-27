@@ -9,21 +9,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from docs_mcp.config import settings
-from docs_mcp.embeddings import get_embedding_provider
 from docs_mcp.processing.chunker import chunk_markdown
 from docs_mcp.processing.extract import file_to_markdown, html_to_markdown
-from docs_mcp.storage.db import Database, source_pattern
+from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
-
-
-async def embed_and_search(db: Database, query: str, *, name: str | None = None, version: str | None = None, k: int = 5, mode: str = "hybrid", min_similarity: float | None = None):
-    provider = get_embedding_provider()
-    await db.ensure_schema(provider.dimensions)
-    vectors = await provider.embed([query])
-    if min_similarity is None:
-        return await db.search(vectors[0], query_text=query, pattern=source_pattern(name, version), k=max(1, min(k, 20)), mode=mode)
-    return await db.search(vectors[0], query_text=query, pattern=source_pattern(name, version), k=max(1, min(k, 20)), mode=mode, min_similarity=min_similarity)
 
 
 @dataclass
@@ -50,6 +40,7 @@ async def _flush_pending(provider, db, pending, result):
 
 async def ingest_documentation(
     db: Database,
+    provider,
     name: str,
     version: str,
     base_url: str,
@@ -61,8 +52,6 @@ async def ingest_documentation(
     sitemap: bool = False,
 ) -> dict:
     source_id = f"{name}@{version}"
-    provider = get_embedding_provider()
-    await db.ensure_schema(provider.dimensions)
     known_hashes = await db.get_source_hashes(source_id)
     seen_urls: set[str] = set()
 
@@ -155,10 +144,8 @@ async def ingest_documentation(
     return asdict(result)
 
 
-async def ingest_files(db: Database, name: str, files: list[tuple[str, bytes]]) -> IngestResult:
+async def ingest_files(db: Database, provider, name: str, files: list[tuple[str, bytes]]) -> IngestResult:
     source_id = f"{name}@latest"
-    provider = get_embedding_provider()
-    await db.ensure_schema(provider.dimensions)
 
     result = IngestResult(source_id=source_id, pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=0)
     pending: list[dict] = []
@@ -204,7 +191,7 @@ async def ingest_files(db: Database, name: str, files: list[tuple[str, bytes]]) 
 SUPPORTED_EXTS = {".html", ".htm", ".md", ".txt", ".pdf"}
 
 
-async def ingest_folder(db: Database, name: str, folder_path: str, recursive: bool = True) -> IngestResult:
+async def ingest_folder(db: Database, provider, name: str, folder_path: str, recursive: bool = True) -> IngestResult:
     root = Path(folder_path).expanduser().resolve()
     if not root.is_dir():
         return IngestResult(source_id=f"{name}@latest", pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=1)
@@ -230,4 +217,4 @@ async def ingest_folder(db: Database, name: str, folder_path: str, recursive: bo
             continue
         files.append((str(p.relative_to(root)), content))
 
-    return await ingest_files(db, name=name, files=files)
+    return await ingest_files(db, provider, name, files)

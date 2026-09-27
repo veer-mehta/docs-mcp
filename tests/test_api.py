@@ -2,14 +2,22 @@ import httpx
 import pytest
 
 from docs_mcp import api
-from docs_mcp.pipeline import IngestResult
+from docs_mcp.index import DocsIndex, shared_index
+from tests.fakes import HashEmbeddingProvider, InMemoryStore
 
 
 @pytest.fixture()
-async def client():
+def store():
+    return InMemoryStore()
+
+
+@pytest.fixture()
+async def client(store):
+    api.app.dependency_overrides[shared_index] = lambda: DocsIndex(store, HashEmbeddingProvider())
     transport = httpx.ASGITransport(app=api.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as value:
         yield value
+    api.app.dependency_overrides.clear()
 
 
 def test_openapi_exposes_api_contract():
@@ -57,22 +65,16 @@ async def test_missing_uploads_keep_existing_errors(client):
     assert response.json() == {"error": "no file provided"}
 
 
-async def test_multipart_uploads_are_parsed(client, monkeypatch):
-    captured = {}
-
-    async def fake_ingest_files(_db, *, name, files):
-        captured.update(name=name, files=files)
-        return IngestResult("docs@latest", 1, 1, 1, 0)
-
+async def test_multipart_uploads_are_parsed(client, store, monkeypatch):
     async def fake_resolve_dependencies(filename, content, max_deps=20):
         return {"filename": filename, "content": content, "max_deps": max_deps}
 
-    monkeypatch.setattr(api, "ingest_files", fake_ingest_files)
     monkeypatch.setattr(api, "resolve_dependencies", fake_resolve_dependencies)
 
-    response = await client.post("/upload", data={"name": "docs"}, files=[("files", ("guide.md", b"# Guide", "text/markdown"))])
+    response = await client.post("/upload", data={"name": "docs"}, files=[("files", ("guide.md", b"# Guide\n\nHow routing works.", "text/markdown"))])
     assert response.status_code == 200
-    assert captured == {"name": "docs", "files": [("guide.md", b"# Guide")]}
+    assert response.json()["source_id"] == "docs@latest"
+    assert {(row["source_id"], row["url"]) for row in store.rows} == {("docs@latest", "file:///guide.md")}
 
     response = await client.post("/ingest-deps", data={"max_deps": "5"}, files={"file": ("requirements.txt", b"fastapi\n", "text/plain")})
     assert response.status_code == 200

@@ -4,8 +4,8 @@ import uuid
 from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 
-from docs_mcp.pipeline import IngestResult, ingest_documentation
-from docs_mcp.storage.db import Database
+from docs_mcp.index import DocsIndex
+from docs_mcp.pipeline import IngestResult
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ JOBS = JobRegistry()
 
 
 def submit_ingest(
-    db: Database,
+    index: DocsIndex,
     *,
     name: str,
     version: str,
@@ -120,8 +120,7 @@ def submit_ingest(
                     name=job.name, version=job.version, base_url=job.base_url, max_depth=job.max_depth, max_pages=job.max_pages, prune_missing=job.prune_missing, on_progress=on_progress
                 )
             else:
-                job.result = await ingest_documentation(
-                    db,
+                job.result = await index.ingest_site(
                     name=job.name,
                     version=job.version,
                     base_url=job.base_url,
@@ -145,10 +144,10 @@ def submit_ingest(
     return job
 
 
-async def ingest_or_submit(db: Database, *, name: str, version: str, base_url: str, background: bool = False, **kwargs) -> tuple[dict, int]:
+async def ingest_or_submit(index: DocsIndex, *, name: str, version: str, base_url: str, background: bool = False, **kwargs) -> tuple[dict, int]:
     """Returns (body_dict, http_status)."""
     if background:
-        job = submit_ingest(db, name=name, version=version, base_url=base_url, **kwargs)
+        job = submit_ingest(index, name=name, version=version, base_url=base_url, **kwargs)
         return {"job_id": job.id, "status": job.status, "poll": f"/jobs/{job.id}"}, 202
-    result = await ingest_documentation(db, name=name, version=version, base_url=base_url, **kwargs)
+    result = await index.ingest_site(name=name, version=version, base_url=base_url, **kwargs)
     return result, 200

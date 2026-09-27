@@ -8,10 +8,8 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 
 
-async def answer_question(db, query: str) -> dict:
-    from docs_mcp.pipeline import embed_and_search
-
-    hits = await embed_and_search(db, query, k=5, mode="hybrid")
+async def answer_question(index, query: str) -> dict:
+    hits = await index.search(query, k=5)
     if not hits:
         return {"answer": "No matching documentation found.", "sources": []}
     context_lines = []
