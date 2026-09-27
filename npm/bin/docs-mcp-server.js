@@ -9,7 +9,7 @@ const http = require("http");
 const net = require("net");
 
 const HOME = os.homedir();
-const STATE_DIR = path.join(HOME, ".fathom-mcp");
+const STATE_DIR = path.join(HOME, ".docs-mcp");
 const VENV_DIR = path.join(STATE_DIR, "venv");
 const SRC_DIR = path.join(STATE_DIR, "src");
 const MARKER = path.join(VENV_DIR, ".setup-done");
@@ -19,7 +19,7 @@ const PG_PORT = 5432;
 const DOCKER_COMPOSE = `services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: fathom-mcp-postgres
+    container_name: docs-mcp-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: docs_mcp
@@ -39,7 +39,7 @@ volumes:
   pgdata:
 `;
 
-function log(msg) { process.stderr.write(`fathom: ${msg}\n`); }
+function log(msg) { process.stderr.write(`docs-mcp: ${msg}\n`); }
 
 function findPython() {
   const candidates = ["python3.14", "python3.13", "python3.12", "python3"];
@@ -98,8 +98,8 @@ function ensureConfig() {
   if (!fs.existsSync(envFile)) {
     fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(envFile, [
-      "# fathom-mcp configuration",
-      "# https://github.com/yourname/fathom-mcp#configuration",
+      "# docs-mcp configuration",
+      "# https://github.com/yourname/docs-mcp#configuration",
       "",
       "LLM_API_KEY=your-key-here",
       "LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai",

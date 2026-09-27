@@ -1,4 +1,4 @@
-# fathom-mcp
+# docs-mcp
 
 Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFace)
 → store in Postgres+pgvector → semantic search via MCP server, REST API, and web UI.
@@ -39,7 +39,7 @@ prune-only-on-clean-crawl warning in `index.py`, and the MCP tool docstrings in
 
 ### Issue tracker
 
-Issues live in GitHub Issues for `veer-mehta/fathom-mcp`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for `veer-mehta/docs-mcp`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

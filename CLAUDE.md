@@ -53,7 +53,7 @@ dimensions raises and requires dropping the table and re-ingesting. Search modes
 `ingest_or_submit` returns `Job | IngestResult`; both adapters use it, and `api.py` maps
 it to 202/200.
 
-**Config**: `settings` reads `~/.fathom-mcp/.env` then the repo `.env` (later wins).
+**Config**: `settings` reads `~/.docs-mcp/.env` then the repo `.env` (later wins).
 `.env.example` lists every key. A git worktree has no `.env`, so it silently falls back to
 defaults (384-dim model) — symlink the main checkout's `.env` before running the app there.
 
@@ -66,8 +66,8 @@ tests.fakes.HashEmbeddingProvider())`. API tests override the dependency with
 
 ## npm distribution
 
-`npm/` is the `@fathom-mcp/server` package: `bin/docs-mcp-server.js` copies the bundled
-`npm/python/` into `~/.fathom-mcp/src`, creates a venv there, and starts Postgres via
+`npm/` is the `@docs-mcp/server` package: `bin/docs-mcp-server.js` copies the bundled
+`npm/python/` into `~/.docs-mcp/src`, creates a venv there, and starts Postgres via
 docker compose. `npm/python/src/docs_mcp` is a hand-maintained copy of `src/docs_mcp` with
 no sync script and currently lags behind (still the old multi-directory layout) — edits
 to `src/` do not reach the npm package unless copied over deliberately.

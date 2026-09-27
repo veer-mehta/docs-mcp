@@ -1,4 +1,4 @@
-# fathom-mcp
+# docs-mcp
 
 MCP server for documentation RAG. Crawl docs sites, upload files, or index
 local folders — then semantic search and chat with your docs via any MCP client.
@@ -6,7 +6,7 @@ local folders — then semantic search and chat with your docs via any MCP clien
 ## Install
 
 ```bash
-npx @fathom-mcp/server
+npx @docs-mcp/server
 ```
 
 First run installs Python dependencies (~5GB, one-time). Subsequent runs start
@@ -18,15 +18,15 @@ Requires **Python 3.12+** on your system.
 
 ```bash
 # Start the server (stdio MCP transport)
-npx @fathom-mcp/server
+npx @docs-mcp/server
 
 # Or start the REST API + web UI
-npx @fathom-mcp/server --api
+npx @docs-mcp/server --api
 ```
 
 ## Configuration
 
-Create `~/.fathom-mcp/.env` with at minimum:
+Create `~/.docs-mcp/.env` with at minimum:
 
 ```
 LLM_API_KEY=your-key-here
@@ -38,7 +38,7 @@ DATABASE_URL=postgresql://docs_mcp:docs_mcp@localhost:5432/docs_mcp
 Requires a running Postgres instance with pgvector:
 
 ```bash
-docker run -d --name fathom-postgres \
+docker run -d --name docs-mcp-postgres \
   -e POSTGRES_USER=docs_mcp -e POSTGRES_PASSWORD=docs_mcp \
   -e POSTGRES_DB=docs_mcp -p 5432:5432 \
   pgvector/pgvector:pg16
@@ -61,9 +61,9 @@ Add to `~/.config/opencode/opencode.jsonc`:
 ```json
 {
   "mcp": {
-    "fathom-mcp": {
+    "docs-mcp": {
       "type": "local",
-      "command": ["npx", "-y", "@fathom-mcp/server"]
+      "command": ["npx", "-y", "@docs-mcp/server"]
     }
   }
 }
@@ -78,6 +78,7 @@ When run with `--api`, serves at `http://127.0.0.1:8000`:
 - `POST /upload` — upload files (multipart)
 - `POST /upload-folder` — index a local folder
 - `GET /llm-chat?q=...` — chat with docs
+- `GET /health` — liveness probe
 - `GET /docs` — interactive OpenAPI documentation
 
 ## License

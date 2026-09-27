@@ -1,4 +1,4 @@
-# fathom-mcp
+# docs-mcp
 
 Documentation RAG system: crawl a docs site → chunk + embed locally (HuggingFace)
 → store in Postgres+pgvector → semantic search via MCP server, REST API, and web UI.
@@ -20,7 +20,7 @@ flowchart LR
 ## Quick start
 
 ```bash
-git clone ... fathom-mcp && cd fathom-mcp
+git clone ... docs-mcp && cd docs-mcp
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[local]"
 docker compose up -d
@@ -31,8 +31,8 @@ cp .env.example .env              # set LLM_API_KEY
 ## npm (no clone needed)
 
 ```bash
-npx @fathom-mcp/server            # first run installs ~5GB deps, then instant
-npx @fathom-mcp/server --api      # REST API + web UI
+npx @docs-mcp/server            # first run installs ~5GB deps, then instant
+npx @docs-mcp/server --api      # REST API + web UI
 ```
 
 ## MCP tools
@@ -59,9 +59,9 @@ Add to `~/.config/opencode/opencode.jsonc`:
 ```json
 {
   "mcp": {
-    "fathom-mcp": {
+    "docs-mcp": {
       "type": "local",
-      "command": ["npx", "-y", "@fathom-mcp/server"]
+      "command": ["npx", "-y", "@docs-mcp/server"]
     }
   }
 }
@@ -69,4 +69,4 @@ Add to `~/.config/opencode/opencode.jsonc`:
 
 ## Config
 
-`~/.fathom-mcp/.env` — set `EMBEDDING_PROVIDER=api` + `EMBEDDING_API_KEY` for remote embeddings (Jina, OpenAI, etc.), or leave as `local` for HuggingFace.
+`~/.docs-mcp/.env` — set `EMBEDDING_PROVIDER=api` + `EMBEDDING_API_KEY` for remote embeddings (Jina, OpenAI, etc.), or leave as `local` for HuggingFace.
