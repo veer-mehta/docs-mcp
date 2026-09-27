@@ -54,7 +54,6 @@ npx @docs-mcp/server --api      # REST API + web UI
 | `POST /upload-folder` | Index a local folder |
 | `GET /llm-chat?q=...` | Chat with docs |
 | `GET /about` | System info |
-| `GET /health` | Liveness probe |
 | `GET /docs` | Interactive OpenAPI documentation |
 | `GET /openapi.json` | OpenAPI schema |
 

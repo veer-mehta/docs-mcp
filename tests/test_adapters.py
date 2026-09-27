@@ -25,7 +25,7 @@ async def client(store):
 def test_openapi_exposes_api_contract():
     schema = api.app.openapi()
     assert schema["info"]["title"] == "docs-mcp"
-    assert set(schema["paths"]) == {"/", "/health", "/about", "/search", "/sources", "/sources/{source_id}", "/ingest", "/upload", "/upload-folder", "/ingest-deps", "/jobs", "/jobs/{job_id}", "/llm-chat"}
+    assert set(schema["paths"]) == {"/", "/about", "/search", "/sources", "/sources/{source_id}", "/ingest", "/upload", "/upload-folder", "/ingest-deps", "/jobs", "/jobs/{job_id}", "/llm-chat"}
 
 
 async def test_validation_errors_keep_bad_request_status(client):
