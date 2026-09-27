@@ -1,10 +1,10 @@
+import json
+
 import httpx
 import pytest
 
-from docs_mcp.adapters import http_api as api
-from docs_mcp.index import DocsIndex, shared_index
-from docs_mcp.jobs import JobRegistry
-from docs_mcp.pipeline import IngestResult
+from docs_mcp import api, server
+from docs_mcp.index import DocsIndex, IngestResult, JobRegistry, shared_index
 from tests.fakes import HashEmbeddingProvider, InMemoryStore
 
 
@@ -100,3 +100,21 @@ async def test_unknown_job_returns_not_found(client):
     response = await client.get("/jobs/unknown")
     assert response.status_code == 404
     assert response.json() == {"error": "unknown job: unknown"}
+
+
+async def test_sync_add_documentation_forwards_prune_missing(monkeypatch):
+    captured = {}
+
+    class FakeIndex:
+        async def ingest_site(self, name, version, base_url, **kwargs):
+            captured.update(kwargs)
+            return IngestResult(f"{name}@{version}", 0, 0, 0, 0)
+
+    async def fake_shared_index():
+        return FakeIndex()
+
+    monkeypatch.setattr(server, "shared_index", fake_shared_index)
+    result = await server.add_documentation("fw", "1.0", "https://fw.dev", prune_missing=True)
+
+    assert json.loads(result)["source_id"] == "fw@1.0"
+    assert captured["prune_missing"] is True

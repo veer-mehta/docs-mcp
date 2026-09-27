@@ -22,7 +22,7 @@ Configuration lives in `.env` (see `.env.example`). Architecture is described in
   `PID=$(ss -tlnp | grep :8000 | grep -oP 'pid=\K[0-9]+' | head -1); kill $PID`
 - MCP stdio: pipe `initialize`, `notifications/initialized`, `tools/list` as
   JSON-RPC lines into `docs-mcp-server`. The notification is required; order matters.
-- Inline JS in `static/index.html` has no build step: extract the `<script>`
+- Inline JS in `index.html` has no build step: extract the `<script>`
   blocks and `node --check` them.
 - `node scripts/check_sanitizer.mjs` after touching `clean()` — it is the only
   thing between LLM-authored markdown and `innerHTML`. Needs jsdom via
@@ -31,9 +31,9 @@ Configuration lives in `.env` (see `.env.example`). Architecture is described in
 ## Conventions
 
 No comments or docstrings unless their absence causes real damage. Intentional
-exceptions: the GPU-OOM note in `embeddings/local.py`, the
-prune-only-on-clean-crawl warning in `pipeline.py`, and the MCP tool docstrings in
-`adapters/mcp_server.py` — those are protocol payloads sent to clients, not documentation.
+exceptions: the GPU-OOM note in `embeddings.py`, the
+prune-only-on-clean-crawl warning in `index.py`, and the MCP tool docstrings in
+`server.py` — those are protocol payloads sent to clients, not documentation.
 
 ## Agent skills
 

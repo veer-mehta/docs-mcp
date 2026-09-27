@@ -35,9 +35,9 @@ build-backend = "hatchling.build"
 packages = ["src/docs_mcp"]
 
 [project.scripts]
-docs-mcp-server = "docs_mcp.adapters.mcp_server:main"
-docs-mcp-crawl = "docs_mcp.scraper.runner:main"
-docs-mcp-api = "docs_mcp.adapters.http_api:main"
+docs-mcp-server = "docs_mcp.server:main"
+docs-mcp-crawl = "docs_mcp.crawler:main"
+docs-mcp-api = "docs_mcp.api:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
