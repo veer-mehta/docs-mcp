@@ -29,7 +29,7 @@ class DocsIndex:
         vector = None if mode == "keyword" else (await self.embedder.embed([query]))[0]
         return await self.store.search(vector, query_text=query, pattern=source_pattern(name, version), k=max(1, min(k, 20)), mode=mode, min_similarity=min_similarity)
 
-    async def ingest_site(self, name: str, version: str, base_url: str, **kwargs) -> dict:
+    async def ingest_site(self, name: str, version: str, base_url: str, **kwargs) -> IngestResult:
         return await pipeline.ingest_documentation(self.store, self.embedder, name, version, base_url, **kwargs)
 
     async def ingest_files(self, name: str, files: list[tuple[str, bytes]]) -> IngestResult:

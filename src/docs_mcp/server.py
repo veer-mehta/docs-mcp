@@ -1,12 +1,13 @@
 import json
 import logging
+from dataclasses import asdict
 from datetime import datetime
 
 from mcp.server.mcpserver import MCPServer
 
 from docs_mcp.config import settings
 from docs_mcp.index import shared_index
-from docs_mcp.jobs import JOBS, submit_ingest
+from docs_mcp.jobs import JOBS, Job, ingest_or_submit
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +39,10 @@ async def add_documentation(name: str, version: str, base_url: str, max_depth: i
             following links. Gives better coverage for docs sites
             that expose a sitemap.
     """
-    index = await shared_index()
-    if background:
-        job = submit_ingest(index, name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
-        return json.dumps({"job_id": job.id, "source_id": job.source_id, "status": job.status, "note": f'Poll get_ingest_status(job_id="{job.id}") until status is done or failed.'})
-    result = await index.ingest_site(name, version, base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
-    return json.dumps(result)
+    outcome = await ingest_or_submit(await shared_index(), name=name, version=version, base_url=base_url, background=background, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
+    if isinstance(outcome, Job):
+        return json.dumps({"job_id": outcome.id, "source_id": outcome.source_id, "status": outcome.status, "note": f'Poll get_ingest_status(job_id="{outcome.id}") until status is done or failed.'})
+    return json.dumps(asdict(outcome))
 
 
 @mcp.tool()

@@ -3,6 +3,8 @@ import pytest
 
 from docs_mcp import api
 from docs_mcp.index import DocsIndex, shared_index
+from docs_mcp.jobs import JobRegistry
+from docs_mcp.pipeline import IngestResult
 from tests.fakes import HashEmbeddingProvider, InMemoryStore
 
 
@@ -43,16 +45,29 @@ async def test_validation_errors_keep_bad_request_status(client):
 async def test_ingest_body_is_validated_and_forwarded(client, monkeypatch):
     captured = {}
 
-    async def fake_ingest_or_submit(_db, **kwargs):
+    async def fake_ingest_or_submit(_index, **kwargs):
         captured.update(kwargs)
-        return {"status": "ok"}, 200
+        return IngestResult("fw@1.0", 1, 1, 2, 0)
 
     monkeypatch.setattr(api, "ingest_or_submit", fake_ingest_or_submit)
     response = await client.post("/ingest", json={"name": "fw", "version": "1.0", "base_url": "https://fw.dev"})
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["chunks_indexed"] == 2
     assert captured == {"name": "fw", "version": "1.0", "base_url": "https://fw.dev", "background": False, "max_depth": None, "max_pages": None, "prune_missing": False, "lang": "", "sitemap": False}
+
+
+async def test_background_ingest_returns_accepted_with_poll_url(client, monkeypatch):
+    job = JobRegistry().create(name="fw", version="1.0", base_url="https://fw.dev", max_depth=None, max_pages=None)
+
+    async def fake_ingest_or_submit(_index, **kwargs):
+        return job
+
+    monkeypatch.setattr(api, "ingest_or_submit", fake_ingest_or_submit)
+    response = await client.post("/ingest", json={"name": "fw", "version": "1.0", "base_url": "https://fw.dev", "background": True})
+
+    assert response.status_code == 202
+    assert response.json() == {"job_id": job.id, "status": "queued", "poll": f"/jobs/{job.id}"}
 
 
 async def test_missing_uploads_keep_existing_errors(client):
