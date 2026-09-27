@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from docs_mcp.storage.db import Database
+from docs_mcp.store import ChunkStore
 
 pytestmark = pytest.mark.integration
 
@@ -26,7 +26,7 @@ class FakeProvider:
 
 @pytest.fixture()
 async def db():
-    database = Database(DSN, table=TABLE)
+    database = ChunkStore(DSN, table=TABLE)
     yield database
     await database.drop_table()
     await database.close()
@@ -119,13 +119,7 @@ async def test_keyword_mode_ranks_lexical_matches(db):
     provider = FakeProvider()
     await db.ensure_schema(provider.dimensions)
     rows = []
-    for i, content in enumerate(
-        [
-            "The router handles URL routing and middleware.",
-            "Rust macros generate fast token parsers.",
-            "Unrelated paragraph about gardening tools.",
-        ]
-    ):
+    for i, content in enumerate(["The router handles URL routing and middleware.", "Rust macros generate fast token parsers.", "Unrelated paragraph about gardening tools."]):
         rows.append(
             {
                 "source_id": "fake-fw@1.0",
@@ -155,10 +149,7 @@ async def test_keyword_mode_ranks_lexical_matches(db):
 async def test_hybrid_mode_fuses_and_dedupes(db):
     provider = FakeProvider()
     await db.ensure_schema(provider.dimensions)
-    contents = [
-        "Pydantic models validate JSON payloads strictly.",
-        "Loose prose mentioning pydantic occasionally.",
-    ]
+    contents = ["Pydantic models validate JSON payloads strictly.", "Loose prose mentioning pydantic occasionally."]
     rows = []
     for i, content in enumerate(contents):
         rows.append(
@@ -183,9 +174,7 @@ async def test_hybrid_mode_fuses_and_dedupes(db):
     assert len(urls) == len(set(urls)), "fusion must dedupe documents"
 
     vector_only = {hit.url for hit in await db.search(vector, mode="vector", k=5)}
-    keyword_only = {
-        hit.url for hit in await db.search(query_text=query, mode="keyword", k=5)
-    }
+    keyword_only = {hit.url for hit in await db.search(query_text=query, mode="keyword", k=5)}
     assert set(urls) >= (vector_only & keyword_only)
 
     both_legs = vector_only & keyword_only
@@ -233,10 +222,7 @@ async def test_get_source_hashes_returns_page_level_map(db):
     await _seed_two_pages(db, provider)
 
     hashes = await db.get_source_hashes("fake-fw@1.0")
-    assert hashes == {
-        "https://fake.dev/a": "hash-a",
-        "https://fake.dev/b": "hash-b",
-    }
+    assert hashes == {"https://fake.dev/a": "hash-a", "https://fake.dev/b": "hash-b"}
     assert await db.get_source_hashes("missing@9") == {}
 
 
@@ -245,9 +231,7 @@ async def test_delete_stale_pages_keeps_visited_urls(db):
     await db.ensure_schema(provider.dimensions)
     await _seed_two_pages(db, provider)
 
-    removed = await db.delete_stale_pages(
-        "fake-fw@1.0", {"https://fake.dev/a"}
-    )
+    removed = await db.delete_stale_pages("fake-fw@1.0", {"https://fake.dev/a"})
     assert removed == 1
     hashes = await db.get_source_hashes("fake-fw@1.0")
     assert list(hashes) == ["https://fake.dev/a"]
