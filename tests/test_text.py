@@ -134,6 +134,14 @@ def test_small_child_section_absorbs_into_parent_chunk():
     assert "router object" in unrelated_leaf_keeps_own_chunk
 
 
+def test_hash_comments_inside_code_fences_are_not_headings():
+    markdown = "# Install\n\nRun this:\n\n```bash\n# install deps\npip install x\n```\n\n~~~\n## not a heading\n~~~\n\nThen continue."
+    chunks = chunk_markdown(markdown)
+    assert [chunk.heading_path for chunk in chunks] == [["Install"]]
+    assert "# install deps\npip install x\n```" in chunks[0].content
+    assert "## not a heading" in chunks[0].content
+
+
 def test_no_headings_produces_single_stream():
     text = "plain paragraph. " * 40
     chunks = chunk_markdown(text)
