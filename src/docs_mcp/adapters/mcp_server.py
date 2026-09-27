@@ -124,7 +124,7 @@ async def add_local_docs(name: str, path: str, recursive: bool = True) -> str:
     return json.dumps(
         {
             "source_id": result.source_id,
-            "files_indexed": result.pages_indexed,
+            "pages_indexed": result.pages_indexed,
             "chunks_indexed": result.chunks_indexed,
             "errors": result.errors,
             "note": f'Search with search_documentation(name="{name}").',
