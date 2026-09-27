@@ -11,7 +11,7 @@ from pathlib import Path
 from docs_mcp.config import settings
 from docs_mcp.processing.chunker import chunk_markdown
 from docs_mcp.processing.extract import file_to_markdown, html_to_markdown
-from docs_mcp.storage.db import Database
+from docs_mcp.store import ChunkStore
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ async def _flush_pending(provider, db, pending, result):
 
 
 async def ingest_documentation(
-    db: Database,
+    db: ChunkStore,
     provider,
     name: str,
     version: str,
@@ -148,7 +148,7 @@ async def ingest_documentation(
     return result
 
 
-async def ingest_files(db: Database, provider, name: str, files: list[tuple[str, bytes]]) -> IngestResult:
+async def ingest_files(db: ChunkStore, provider, name: str, files: list[tuple[str, bytes]]) -> IngestResult:
     source_id = f"{name}@latest"
 
     result = IngestResult(source_id=source_id, pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=0)
@@ -180,7 +180,7 @@ async def ingest_files(db: Database, provider, name: str, files: list[tuple[str,
 SUPPORTED_EXTS = {".html", ".htm", ".md", ".txt", ".pdf"}
 
 
-async def ingest_folder(db: Database, provider, name: str, folder_path: str, recursive: bool = True) -> IngestResult:
+async def ingest_folder(db: ChunkStore, provider, name: str, folder_path: str, recursive: bool = True) -> IngestResult:
     root = Path(folder_path).expanduser().resolve()
     if not root.is_dir():
         return IngestResult(source_id=f"{name}@latest", pages_crawled=0, pages_indexed=0, chunks_indexed=0, errors=1)

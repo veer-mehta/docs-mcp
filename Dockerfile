@@ -13,4 +13,4 @@ RUN playwright install --with-deps chromium
 
 EXPOSE ${PORT:-8000}
 
-CMD ["python", "-m", "docs_mcp.api"]
+CMD ["python", "-m", "docs_mcp.adapters.http_api"]

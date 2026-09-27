@@ -6,9 +6,9 @@ def get_embedding_provider():
     from docs_mcp.config import settings
 
     if settings.embedding_provider == "api":
-        from docs_mcp.embeddings.api_provider import APIEmbeddingProvider
+        from docs_mcp.embeddings.remote import RemoteEmbeddingProvider
 
-        return APIEmbeddingProvider()
-    from docs_mcp.embeddings.local_provider import LocalEmbeddingProvider
+        return RemoteEmbeddingProvider()
+    from docs_mcp.embeddings.local import LocalEmbeddingProvider
 
     return LocalEmbeddingProvider()

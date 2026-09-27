@@ -1,6 +1,6 @@
 import json
 
-from docs_mcp import server
+from docs_mcp.adapters import mcp_server as server
 from docs_mcp.pipeline import IngestResult
 
 

@@ -3,7 +3,7 @@ import re
 
 import httpx
 
-from docs_mcp.parsers import Dependency, parse_dep_file
+from docs_mcp.deps.manifests import Dependency, parse_dep_file
 
 logger = logging.getLogger(__name__)
 
