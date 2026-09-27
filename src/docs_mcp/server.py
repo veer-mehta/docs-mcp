@@ -5,14 +5,12 @@ from datetime import datetime
 from mcp.server.mcpserver import MCPServer
 
 from docs_mcp.config import settings
+from docs_mcp.index import shared_index
 from docs_mcp.jobs import JOBS, submit_ingest
-from docs_mcp.pipeline import embed_and_search, ingest_documentation, ingest_folder
-from docs_mcp.storage.db import Database
 
 logger = logging.getLogger(__name__)
 
 mcp = MCPServer("fathom-mcp")
-db = Database(settings.database_url)
 
 
 @mcp.tool()
@@ -40,10 +38,11 @@ async def add_documentation(name: str, version: str, base_url: str, max_depth: i
             following links. Gives better coverage for docs sites
             that expose a sitemap.
     """
+    index = await shared_index()
     if background:
-        job = submit_ingest(db, name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
+        job = submit_ingest(index, name=name, version=version, base_url=base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
         return json.dumps({"job_id": job.id, "source_id": job.source_id, "status": job.status, "note": f'Poll get_ingest_status(job_id="{job.id}") until status is done or failed.'})
-    result = await ingest_documentation(db, name, version, base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
+    result = await index.ingest_site(name, version, base_url, max_depth=max_depth, max_pages=max_pages, prune_missing=prune_missing, lang=lang, sitemap=sitemap)
     return json.dumps(result)
 
 
@@ -75,11 +74,8 @@ async def search_documentation(query: str, name: str | None = None, version: str
         mode: "hybrid" (default) fuses vector + keyword ranking;
             "vector" or "keyword" force a single strategy.
     """
-    from docs_mcp.embeddings import get_embedding_provider
-
-    provider = get_embedding_provider()
-    await db.ensure_schema(provider.dimensions)
-    hits = await embed_and_search(db, query, name=name, version=version, k=k, mode=mode)
+    index = await shared_index()
+    hits = await index.search(query, name=name, version=version, k=k, mode=mode)
     if not hits:
         return "No matching documentation found. Call add_documentation first."
     blocks = []
@@ -96,7 +92,7 @@ async def search_documentation(query: str, name: str | None = None, version: str
 @mcp.tool()
 async def list_sources() -> str:
     """List all indexed documentation sources with page and chunk counts."""
-    rows = await db.list_sources()
+    rows = await (await shared_index()).sources()
     if not rows:
         return "No sources indexed yet."
     lines = []
@@ -125,7 +121,7 @@ async def add_local_docs(name: str, path: str, recursive: bool = True) -> str:
     resolved = Path(path).expanduser().resolve()
     if not resolved.is_dir():
         return f"Not a directory: {path}"
-    result = await ingest_folder(db, name=name, folder_path=str(resolved), recursive=recursive)
+    result = await (await shared_index()).ingest_folder(name, str(resolved), recursive)
     return json.dumps(
         {
             "source_id": result.source_id,
