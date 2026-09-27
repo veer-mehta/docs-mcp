@@ -134,11 +134,6 @@ async def home():
     return FileResponse(INDEX_HTML)
 
 
-@app.get("/health")
-async def health():
-    return {"status": "ok", "version": __version__}
-
-
 @app.get("/about")
 async def about(index: DocsIndex = Depends(shared_index)):
     provider = index.embedder
