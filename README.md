@@ -66,7 +66,7 @@ Add to `~/.config/opencode/opencode.jsonc`:
   "mcp": {
     "docs-mcp": {
       "type": "local",
-      "command": ["/path/to/docs-mcp/.venv/bin/python", "-m", "docs_mcp.server"]
+      "command": ["/path/to/docs-mcp/.venv/bin/python", "-m", "docs_mcp.mcp"]
     }
   }
 }
@@ -75,7 +75,7 @@ Add to `~/.config/opencode/opencode.jsonc`:
 Replace `/path/to/docs-mcp` with your actual clone path. You can verify it works with:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /path/to/docs-mcp/.venv/bin/python -m docs_mcp.server
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /path/to/docs-mcp/.venv/bin/python -m docs_mcp.mcp
 ```
 
 ## Config

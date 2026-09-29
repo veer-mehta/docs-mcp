@@ -33,7 +33,7 @@ Configuration lives in `.env` (see `.env.example`). Architecture is described in
 No comments or docstrings unless their absence causes real damage. Intentional
 exceptions: the GPU-OOM note in `embeddings.py`, the
 prune-only-on-clean-crawl warning in `index.py`, and the MCP tool docstrings in
-`server.py` — those are protocol payloads sent to clients, not documentation.
+`mcp.py` — those are protocol payloads sent to clients, not documentation.
 
 ## Agent skills
 

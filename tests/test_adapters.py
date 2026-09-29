@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from docs_mcp import api, server
+from docs_mcp import api, mcp
 from docs_mcp.index import DocsIndex, IngestResult, JobRegistry, shared_index
 from tests.fakes import HashEmbeddingProvider, InMemoryStore
 
@@ -113,8 +113,8 @@ async def test_sync_add_documentation_forwards_prune_missing(monkeypatch):
     async def fake_shared_index():
         return FakeIndex()
 
-    monkeypatch.setattr(server, "shared_index", fake_shared_index)
-    result = await server.add_documentation("fw", "1.0", "https://fw.dev", prune_missing=True)
+    monkeypatch.setattr(mcp, "shared_index", fake_shared_index)
+    result = await mcp.add_documentation("fw", "1.0", "https://fw.dev", prune_missing=True)
 
     assert json.loads(result)["source_id"] == "fw@1.0"
     assert captured["prune_missing"] is True
