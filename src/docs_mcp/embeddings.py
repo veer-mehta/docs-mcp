@@ -22,8 +22,6 @@ class LocalEmbeddingProvider:
                 raise
             logger.warning("loading on %s failed (%s); retrying on CPU", device, exc)
             self._model = SentenceTransformer(settings.local_embedding_model, device="cpu")
-        # Chunker caps chunks well below this; the model default (8192 for
-        # bge-m3) makes activation memory explode on small GPUs.
         self._model.max_seq_length = settings.local_embedding_max_tokens
 
     @staticmethod

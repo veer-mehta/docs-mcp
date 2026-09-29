@@ -726,8 +726,6 @@ function selectedMode() {
   return document.querySelector('input[name="mode"]:checked').value;
 }
 
-/* One page can match several chunks; group so near-duplicate cards collapse
-   into one result with its chunks listed under it. */
 function renderHits(hits) {
   const groups = [];
   const byUrl = new Map();
@@ -881,8 +879,6 @@ function renderSources() {
   if (btn) btn.addEventListener("click", () => { sourceShowAll = true; renderSources(); });
 }
 
-/* click once to arm, click again within 3s to actually delete — avoids a
-   blocking native confirm() dialog for a routine, low-stakes action */
 $("sourceRows").addEventListener("click", async (e) => {
   const btn = e.target.closest(".source-del");
   if (!btn) return;
