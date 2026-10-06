@@ -25,7 +25,6 @@ dependencies = [
 
 [project.optional-dependencies]
 local = ["sentence-transformers>=3.3"]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.25"]
 
 [build-system]
 requires = ["hatchling"]
@@ -38,9 +37,3 @@ packages = ["src/docs_mcp"]
 docs-mcp-server = "docs_mcp.mcp:main"
 docs-mcp-crawl = "docs_mcp.crawler:main"
 docs-mcp-api = "docs_mcp.api:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
-markers = ["integration: requires a running Postgres with pgvector"]

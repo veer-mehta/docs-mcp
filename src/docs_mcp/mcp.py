@@ -82,7 +82,7 @@ async def search_documentation(query: str, name: str | None = None, version: str
         crumb = " > ".join(hit.heading_path)
         if crumb:
             header += f" — {crumb}"
-        score = f"relevance {hit.similarity:.2f}" if hit.similarity is not None else f"match {hit.bm25_score:.4f}"
+        score = f"relevance {hit.similarity:.2f}" if hit.similarity is not None else f"match {hit.ts_rank_cd_score:.4f}"
         blocks.append(f"### [{header}]({hit.url}) ({score})\n\n{hit.content}")
     return "\n\n---\n\n".join(blocks)
 

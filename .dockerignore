@@ -2,9 +2,7 @@
 .git/
 __pycache__/
 *.pyc
-tests/
 scripts/
-npm/
 .crawl-cache/
 .env
 .env.example

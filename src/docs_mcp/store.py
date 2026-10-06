@@ -56,7 +56,7 @@ class SearchHit:
     content: str
     source_id: str = ""
     similarity: float | None = None
-    bm25_score: float | None = None
+    ts_rank_cd_score: float | None = None
 
 
 def to_vector_literal(vector: list[float]) -> str:
@@ -149,14 +149,14 @@ class ChunkStore:
         return await pool.fetch(
             f"SELECT id, url, title, heading_path, content, source_id, "
             f"ts_rank_cd(to_tsvector('english', content), "
-            f"websearch_to_tsquery('english', $1), 32) AS bm25_score "
+            f"websearch_to_tsquery('english', $1), 32) AS ts_rank_cd_score "
             f"FROM {self._table} "
             f"WHERE ($2::text IS NULL OR source_id LIKE $2) "
             f"AND to_tsvector('english', content) "
             f"@@ websearch_to_tsquery('english', $1) "
             f"AND ts_rank_cd(to_tsvector('english', content), "
             f"websearch_to_tsquery('english', $1), 32) > 0.01 "
-            f"ORDER BY bm25_score DESC LIMIT $3",
+            f"ORDER BY ts_rank_cd_score DESC LIMIT $3",
             websearch_query,
             pattern,
             n,
@@ -171,7 +171,7 @@ class ChunkStore:
             content=row["content"],
             source_id=row.get("source_id", ""),
             similarity=float(row["similarity"]) if "similarity" in row.keys() else None,
-            bm25_score=float(row["bm25_score"]) if "bm25_score" in row.keys() else None,
+            ts_rank_cd_score=float(row["ts_rank_cd_score"]) if "ts_rank_cd_score" in row.keys() else None,
         )
 
     async def search(
@@ -207,19 +207,19 @@ class ChunkStore:
                 contribution = 1.0 / (rrf_k + position + 1)
                 existing = entries.get(row["id"])
                 if existing is None:
-                    fused, sim, bm25, rep = 0.0, None, None, row
+                    fused, sim, rank_cd, rep = 0.0, None, None, row
                 else:
-                    fused, sim, bm25, rep = existing
+                    fused, sim, rank_cd, rep = existing
                 if "similarity" in row.keys():
                     sim = float(row["similarity"])
-                if "bm25_score" in row.keys():
-                    bm25 = float(row["bm25_score"])
-                entries[row["id"]] = (fused + contribution, sim, bm25, rep)
+                if "ts_rank_cd_score" in row.keys():
+                    rank_cd = float(row["ts_rank_cd_score"])
+                entries[row["id"]] = (fused + contribution, sim, rank_cd, rep)
 
         ranked = sorted(entries.values(), key=lambda e: e[0], reverse=True)[:k]
         return [
-            SearchHit(url=rep["url"], title=rep["title"], heading_path=list(rep["heading_path"]), content=rep["content"], source_id=rep.get("source_id", ""), similarity=sim, bm25_score=bm25)
-            for _, sim, bm25, rep in ranked
+            SearchHit(url=rep["url"], title=rep["title"], heading_path=list(rep["heading_path"]), content=rep["content"], source_id=rep.get("source_id", ""), similarity=sim, ts_rank_cd_score=rank_cd)
+            for _, sim, rank_cd, rep in ranked
             if sim is None or sim >= min_similarity
         ]
 
